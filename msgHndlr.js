@@ -7,7 +7,7 @@ const color = require('./lib/color')
 const { spawn, exec } = require('child_process')
 /*const nhentai = require('nhentai-js')
 const { API } = require('nhentai-api')*/
-const { liriklagu, quotemaker, randomNimek, fb, sleep, jadwalTv, ss } = require('./lib/functions')
+const { liriklagu, quotemaker, memegen, randomNimek, fb, sleep, jadwalTv, ss } = require('./lib/functions')
 const { help, snk, info, donate, readme, listChannel } = require('./lib/help')
 const { stdout } = require('process')
 const nsfw_ = JSON.parse(fs.readFileSync('./lib/NSFW.json'))
@@ -29,7 +29,7 @@ module.exports = msgHandler = async (client, message) => {
         const msgs = (message) => {
             if (command.startsWith('#')) {
                 if (message.length >= 10){
-                    return `${message.substr(0, 15)}`
+                    //return `${message.substr(0, 15)}`
                 }else{
                     return `${message}`
                 }
@@ -57,16 +57,16 @@ module.exports = msgHandler = async (client, message) => {
         const groupAdmins = isGroupMsg ? await client.getGroupAdmins(groupId) : ''
         const isGroupAdmins = isGroupMsg ? groupAdmins.includes(sender.id) : false
         const isBotGroupAdmins = isGroupMsg ? groupAdmins.includes(botNumber + '@c.us') : false
-        const ownerNumber = '628xxxxx@c.us'
+        const ownerNumber = '6283159125945@c.us'
         const isOwner = sender.id === ownerNumber
         const isBlocked = blockNumber.includes(sender.id)
         const isNsfw = isGroupMsg ? nsfw_.includes(chat.id) : false
         const uaOverride = 'WhatsApp/2.2029.4 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.116 Safari/537.36'
         const isUrl = new RegExp(/https?:\/\/(www\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_+.~#?&/=]*)/gi)
-        if (!isGroupMsg && command.startsWith('!')) console.log('\x1b[1;31m~\x1b[1;37m>', '[\x1b[1;32mEXEC\x1b[1;37m]', time, color(msgs(command)), 'from', color(pushname))
-        if (isGroupMsg && command.startsWith('!')) console.log('\x1b[1;31m~\x1b[1;37m>', '[\x1b[1;32mEXEC\x1b[1;37m]', time, color(msgs(command)), 'from', color(pushname), 'in', color(formattedTitle))
-        if (!isGroupMsg && !command.startsWith('!')) console.log('\x1b[1;33m~\x1b[1;37m>', '[\x1b[1;31mMSG\x1b[1;37m]', time, color(body), 'from', color(pushname))
-        if (isGroupMsg && !command.startsWith('!')) console.log('\x1b[1;33m~\x1b[1;37m>', '[\x1b[1;31mMSG\x1b[1;37m]', time, color(body), 'from', color(pushname), 'in', color(formattedTitle))
+        if (!isGroupMsg && command.startsWith('#')) console.log('\x1b[1;31m~\x1b[1;37m>', '[\x1b[1;32mEXEC\x1b[1;37m]', time, color(msgs(command)), 'from', color(pushname))
+        if (isGroupMsg && command.startsWith('#')) console.log('\x1b[1;31m~\x1b[1;37m>', '[\x1b[1;32mEXEC\x1b[1;37m]', time, color(msgs(command)), 'from', color(pushname), 'in', color(formattedTitle))
+        if (!isGroupMsg && !command.startsWith('#')) console.log('\x1b[1;33m~\x1b[1;37m>', '[\x1b[1;31mMSG\x1b[1;37m]', time, color(body), 'from', color(pushname))
+        if (isGroupMsg && !command.startsWith('#')) console.log('\x1b[1;33m~\x1b[1;37m>', '[\x1b[1;31mMSG\x1b[1;37m]', time, color(body), 'from', color(pushname), 'in', color(formattedTitle))
         if (isBlocked) return
         //if (!isOwner) return
         switch(command) {
@@ -169,7 +169,7 @@ module.exports = msgHandler = async (client, message) => {
             .on('exit', () => {
                 client.sendImage(from, './media/img/after.jpg', 'nulis.jpg', 'Nih mhank', id)
             })
-            break
+            breakk
         case '#ytmp3':
             if (args.length === 1) return client.reply(from, 'Kirim perintah *#ytmp3 [linkYt]*, untuk contoh silahkan kirim perintah *#readme*')
             let isLinks = args[1].match(/(?:https?:\/{2})?(?:w{3}\.)?youtu(?:be)?\.(?:com|be)(?:\/watch\?v=|\/)([^\s&]+)/)
@@ -220,7 +220,7 @@ module.exports = msgHandler = async (client, message) => {
             }
             break
         case '#cuaca':
-            if (args.length === 1) return client.reply(from, 'Kirim perintah *!#cuaca [tempat]*\nContoh : *#cuaca tangerang', id)
+            if (args.length === 1) return client.reply(from, 'Kirim perintah *#cuaca [tempat]*\nContoh : *#cuaca tangerang', id)
             const tempat = body.slice(7)
             const weather = await get.get('https://mhankbarbar.herokuapp.com/api/cuaca?q='+ tempat).json()
             if (weather.error) {
@@ -352,7 +352,7 @@ module.exports = msgHandler = async (client, message) => {
             } else {
                 client.reply(from, '[ WRONG ] Kirim perintah *!nh [nuClear]* untuk contoh kirim perintah *!readme*')
             }
-        	break
+        	break 
         /*case '#brainly':
             if (args.length >= 2){
                 const BrainlySearch = require('./lib/brainly')
@@ -732,14 +732,14 @@ module.exports = msgHandler = async (client, message) => {
         case '!pokemon':
             q7 = Math.floor(Math.random() * 890) + 1;
             client.sendFileFromUrl(from, 'https://assets.pokemon.com/assets/cms2/img/pokedex/full/'+q7+'.png','Pokemon.png',)
-            break
-        case '!ss':
+            break*/
+        case '#ss':
             const _query = body.slice(4)
             if (!_query.match(isUrl)) return client.reply(from, mess.error.Iv, id)
-            if (args.length === 1) return client.reply(from, 'Kirim perintah *!ss [web]*\nContoh *!ss https://google.com*', id)
+            if (args.length === 1) return client.reply(from, 'Kirim perintah *#ss [web]*\nContoh *#ss https://google.com*', id)
             await ss(_query).then(() => client.sendFile(from, './media/img/screenshot.jpeg', 'ss.jpeg', '', id))
             .catch(() => client.reply(from, `Error tidak dapat mengambil screenshot website ${_query}`, id))
-            break*/
+            break
         case '#quote':
         case '#quotes':
             const quotes = await get.get('https://mhankbarbar.herokuapp.com/api/randomquotes').json()
@@ -754,7 +754,20 @@ module.exports = msgHandler = async (client, message) => {
             const response = await axios.get('https://meme-api.herokuapp.com/gimme/wholesomeanimemes');
             const { postlink, title, subreddit, url, nsfw, spoiler } = response.data
             client.sendFileFromUrl(from, `${url}`, 'meme.jpg', `${title}`)
-            break
+            break            
+        case '#memegen':
+        	if (args.length <= 2 || args.length >= 4) return await client.reply(from, 'Usage: \n#memegen |theme|texs1|text2\n\nEx :\n#memegen |buzz|bicit|random', id)
+        	if (args.length > 2){
+                const tema = args[1]
+                const text1 = args[2]
+                const text2 = args[3]
+                const hasilnye = 'Nih meme nya'
+        		client.sendFileFromUrl(from, `https://api.memegen.link/images/${tema}/${text1}/_/${text2}`, 'memegenerator.jpeg', hasilnye, id).then(apatu => console.log(apatu)).catch(err => {
+                       client.reply(from, mess.error.Qm, id)
+                    })
+                }
+            break      
+    case 'P' :    
         case '#help':
             client.sendText(from, help)
             break

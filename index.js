@@ -4,6 +4,7 @@ const msgHandler = require('./msgHndlr')
 const options = require('./options')
 
 const start = async (client = new Client()) => {
+        console.log('[DEV]', color('Malz', 'yellow'))
         console.log('[SERVER] Server Started!')
         // Force it to keep the current session
         client.onStateChanged((state) => {
@@ -14,7 +15,7 @@ const start = async (client = new Client()) => {
         client.onMessage((async (message) => {
             client.getAmountOfLoadedMessages()
             .then((msg) => {
-                if (msg >= 3000) {
+                if (msg >= 8000) {
                     client.cutMsgCache()
                 }
             })
@@ -29,7 +30,7 @@ const start = async (client = new Client()) => {
         client.onAddedToGroup(((chat) => {
             let totalMem = chat.groupMetadata.participants.length
             if (totalMem < 5) { 
-            	client.sendText(chat.id, `Cih member nya cuma ${totalMem}, Kalo mau invite bot, minimal jumlah mem ada 30`).then(() => client.leaveGroup(chat.id)).then(() => client.deleteChat(chat.id))
+            	client.sendText(chat.id, `Iyeyyyyy member nya cuma ${totalMem}, Kalo mau invite bot, minimal jumlah mem ada 5`).then(() => client.leaveGroup(chat.id)).then(() => client.deleteChat(chat.id))
             } else {
                 client.sendText(chat.groupMetadata.id, `Halo warga grup *${chat.contact.name}* terimakasih sudah menginvite bot ini, untuk melihat menu silahkan kirim *!help*`)
             }
