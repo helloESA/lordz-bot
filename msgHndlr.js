@@ -7,7 +7,7 @@ const color = require('./lib/color')
 const { spawn, exec } = require('child_process')
 /*const nhentai = require('nhentai-js')
 const { API } = require('nhentai-api')*/
-const { liriklagu, quotemaker, memegen, randomNimek, fb, sleep, jadwalTv, ss } = require('./lib/functions')
+const { liriklagu, artinama, quotemaker,  randomNimek, fb, sleep, jadwalTv, ss } = require('./lib/functions')
 const { help, snk, info, donate, readme, listChannel } = require('./lib/help')
 const { stdout } = require('process')
 const nsfw_ = JSON.parse(fs.readFileSync('./lib/NSFW.json'))
@@ -115,7 +115,7 @@ module.exports = msgHandler = async (client, message) => {
             client.sendLinkWithAutoPreview(from, 'https://saweria.co/donate/ijmalan', donate)
             break
         case '#tts':
-            if (args.length === 1) return client.reply(from, 'Kirim perintah **tts [id, en, jp, ar] [teks]*, contoh *#tts id halo semua*')
+            if (args.length === 1) return client.reply(from, 'Kirim perintah **#tts [id, en, jp, ar] [teks]*, contoh *#tts id halo semua*')
             const ttsId = require('node-gtts')('id')
             const ttsEn = require('node-gtts')('en')
 	    const ttsJp = require('node-gtts')('ja')
@@ -167,7 +167,7 @@ module.exports = msgHandler = async (client, message) => {
             ])
             .on('error', () => client.reply(from, 'Error gan', id))
             .on('exit', () => {
-                client.sendImage(from, './media/img/after.jpg', 'nulis.jpg', 'Nih mhank', id)
+                client.sendImage(from, './media/img/after.jpg', 'nulis.jpg', 'Nih Sayang❤', id)
             })
             break
         case '#ytmp3':
@@ -418,7 +418,7 @@ module.exports = msgHandler = async (client, message) => {
             }
             break*/
         case '#quotemaker':
-            arg = body.trim().split('|')
+            arg = body.trim().split('.')
             if (arg.length >= 4) {
                 client.reply(from, mess.wait, id)
                 const quotes = arg[1]
@@ -430,7 +430,7 @@ module.exports = msgHandler = async (client, message) => {
                     })
                 })
             } else {
-                client.reply(from, 'Usage: \n#quotemaker |teks|watermark|theme\n\nEx :\n#quotemaker |ini contoh|bicit|random', id)
+                client.reply(from, 'Usage: \n#quotemaker .teks.watermark.theme\n\nEx :\n#quotemaker .ini contoh.bicit.random', id)
             }
             break
         case '#linkgroup':
@@ -600,6 +600,12 @@ module.exports = msgHandler = async (client, message) => {
             if (chord.error) return client.reply(from, chord.error, id)
             client.reply(from, chord.result, id)
             break
+        case '#artinama':
+            if (args.length === 1) return client.reply(from, 'Kirim perintah *#artinama [nama]*, contoh *#artinama ijmal*', id)
+            const namaarti = body.slice(7)
+            const arti = await artinama(namaarti)
+            client.reply(from, arti, id)
+            break          
        /* case '!listdaerah':
             const listDaerah = await get('https://mhankbarbar.herokuapp.com/daerah').json()
             client.reply(from, listDaerah, id)
@@ -756,18 +762,22 @@ module.exports = msgHandler = async (client, message) => {
             client.sendFileFromUrl(from, `${url}`, 'meme.jpg', `${title}`)
             break            
         case '#memegen':
-        	if (args.length <= 2 || args.length >= 4) return await client.reply(from, 'Usage: \n#memegen |theme|texs1|text2\n\nEx :\n#memegen |buzz|bicit|random', id)
-        	if (args.length > 2){
-                const tema = args[1]
-                const text1 = args[2]
-                const text2 = args[3]
-                const hasilnye = 'Nih meme nya'
-        		client.sendFileFromUrl(from, `https://api.memegen.link/images/${tema}/${text1}/_/${text2}`, 'memegenerator.jpeg', hasilnye, id).then(apatu => console.log(apatu)).catch(err => {
+            arg = body.trim().split('.')
+            if (arg.length >= 4) {
+                client.reply(from, mess.wait, id)
+                const tema = args[3]
+                const text1 = args[1]
+                const text2 = args[2]
+                await memegen(text1 , text2, tema).then(amsu => {
+        		    client.sendFile(from, amsu , 'quotesmaker.jpg','neh...').catch(() => {
                        client.reply(from, mess.error.Qm, id)
                     })
-                }
-            break      
-    case 'P' :    
+                })
+            } else {
+                client.reply(from, 'Usage: \n#memegen .text1.text2.tema\n\nEx :\n#memegen .ini contoh.bicit.atis', id)
+            }
+            break          
+        case 'P' :    
         case '#help':
             client.sendText(from, help)
             break
