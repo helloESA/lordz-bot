@@ -115,7 +115,7 @@ module.exports = msgHandler = async (client, message) => {
             client.sendLinkWithAutoPreview(from, 'https://saweria.co/donate/ijmalan', donate)
             break
         case '#tts':
-            if (args.length === 1) return client.reply(from, 'Kirim perintah *!tts [id, en, jp, ar] [teks]*, contoh *!tts id halo semua*')
+            if (args.length === 1) return client.reply(from, 'Kirim perintah **tts [id, en, jp, ar] [teks]*, contoh *#tts id halo semua*')
             const ttsId = require('node-gtts')('id')
             const ttsEn = require('node-gtts')('en')
 	    const ttsJp = require('node-gtts')('ja')
@@ -169,7 +169,7 @@ module.exports = msgHandler = async (client, message) => {
             .on('exit', () => {
                 client.sendImage(from, './media/img/after.jpg', 'nulis.jpg', 'Nih mhank', id)
             })
-            breakk
+            break
         case '#ytmp3':
             if (args.length === 1) return client.reply(from, 'Kirim perintah *#ytmp3 [linkYt]*, untuk contoh silahkan kirim perintah *#readme*')
             let isLinks = args[1].match(/(?:https?:\/{2})?(?:w{3}\.)?youtu(?:be)?\.(?:com|be)(?:\/watch\?v=|\/)([^\s&]+)/)
@@ -353,7 +353,7 @@ module.exports = msgHandler = async (client, message) => {
                 client.reply(from, '[ WRONG ] Kirim perintah *!nh [nuClear]* untuk contoh kirim perintah *!readme*')
             }
         	break 
-        /*case '#brainly':
+        case '#brainly':
             if (args.length >= 2){
                 const BrainlySearch = require('./lib/brainly')
                 let tanya = body.slice(9)
@@ -375,7 +375,7 @@ module.exports = msgHandler = async (client, message) => {
             } else {
                 client.reply(from, 'Usage :\n#brainly [pertanyaan] [.jumlah]\n\nEx : \n#brainly NKRI .2', id)
             }
-            break*/
+            break
         /*case '!wait':
             if (isMedia && type === 'image' || quotedMsg && quotedMsg.type === 'image') {
                 if (isMedia) {
