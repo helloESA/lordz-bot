@@ -739,12 +739,21 @@ module.exports = msgHandler = async (client, message) => {
             q7 = Math.floor(Math.random() * 890) + 1;
             client.sendFileFromUrl(from, 'https://assets.pokemon.com/assets/cms2/img/pokedex/full/'+q7+'.png','Pokemon.png',)
             break*/
-        case '#ss':
-            const _query = body.slice(4)
-            if (!_query.match(isUrl)) return client.reply(from, mess.error.Iv, id)
-            if (args.length === 1) return client.reply(from, 'Kirim perintah *#ss [web]*\nContoh *#ss https://google.com*', id)
-            await ss(_query).then(() => client.sendFile(from, './media/img/screenshot.jpeg', 'ss.jpeg', '', id))
-            .catch(() => client.reply(from, `Error tidak dapat mengambil screenshot website ${_query}`, id))
+        case '#ssweb':
+            if (args.length <= 2 || args.length >= 4) return await client.reply(from, 'Screenshot dari web.\npenggunaan : *#ssweb [url] [dimensi]*\nContoh dimensi : 800x600\ncontoh *#ssweb youtube.com 800x600*', id)
+            if (args.length > 2){
+            const urlweb = args[1]
+            const dimensi = args[2]
+            const captiions = `Menampilkan hasil ss ${urlweb} dengan dimensi ${dimensi}`
+            client.sendFileFromUrl(from, `https://api.screenshotmachine.com/?key=47b84d&url=${urlweb}&dimension=${dimensi}`, 'ssinweb.jpeg', captiions, id).then(apatu => console.log(apatu)).catch(err => {
+                client.reply(from, 'Link gagal diakses!', id)
+            })
+            // const imgss = `https://api.screenshotmachine.com/?key=47b84d&url=${urlweb}&dimension=${dimensi}`
+            // const hasimgss = await get.get(imgss)
+            // const databs64 = Buffer.from(hasimgss).toString('base64')
+            // const captiions = `Menampilkan hasil ss ${urlweb} dengan dimensi ${dimensi}`
+            
+            }
             break
         case '#quote':
         case '#quotes':
