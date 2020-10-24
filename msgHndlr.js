@@ -1,5 +1,6 @@
-const { decryptMedia } = require('@open-wa/wa-decrypt')
+﻿const { decryptMedia } = require('@open-wa/wa-decrypt')
 const fs = require('fs-extra')
+const fetch = require('node-fetch')
 const axios = require('axios')
 const moment = require('moment-timezone')
 const get = require('got')
@@ -7,11 +8,12 @@ const color = require('./lib/color')
 const { spawn, exec } = require('child_process')
 /*const nhentai = require('nhentai-js')
 const { API } = require('nhentai-api')*/
-const { liriklagu, artinama, quotemaker,  randomNimek, fb, sleep, jadwalTv, ss } = require('./lib/functions')
+const { liriklagu, artinama, quotemaker,  ttsticker, ig, fb, sleep, jadwalTv, ss } = require('./lib/functions')
 const { help, snk, info, donate, readme, listChannel } = require('./lib/help')
 const { stdout } = require('process')
 const nsfw_ = JSON.parse(fs.readFileSync('./lib/NSFW.json'))
 const welkom = JSON.parse(fs.readFileSync('./lib/welcome.json'))
+const { RemoveBgResult, removeBackgroundFromImageBase64, removeBackgroundFromImageFile } = require('remove.bg')
 
 moment.tz.setDefault('Asia/Jakarta').locale('id')
 
@@ -70,6 +72,29 @@ module.exports = msgHandler = async (client, message) => {
         if (isBlocked) return
         //if (!isOwner) return
         switch(command) {
+        case '#stikernobg':
+        case '#stickernobg':
+           // if (args.length === 1 && !isMedia || args.length === 1 && !quotedMsg) return client.reply(from, `Kirim foto dengan caption *!stickernobg*`, id)
+            if (isMedia && type === 'image') {
+              try {
+                var mediaData = await decryptMedia(message, uaOverride)
+                var imageBase64 = `data:${mimetype};base64,${mediaData.toString('base64')}`
+                var base64img = imageBase64
+                var outFile = './media/img/noBg.png'
+                var result = await removeBackgroundFromImageBase64({ base64img, apiKey: 'VvkVdYiGLthNVyFYwx1yp73H', size: 'auto', type: 'auto', outFile })
+                    await fs.writeFile(outFile, result.base64img)
+                    await client.sendImageAsSticker(from, `data:${mimetype};base64,${result.base64img}`)
+                } catch(err) {
+                    console.log(err)
+                    client.reply(from, `Maaf, Tidak dapat mengidentifikasi background! mungkin terlalu banyak warna.`, id)
+                }
+                
+            } else if (quotedMsg && quotedMsg.type == 'image') {
+                client.reply(from, `Maaf, media tidak terdeteksi! Kirim foto dengan caption *#stickernobg* bukan tag`, id) 
+            } else {
+                client.reply(from, `Kirim foto dengan caption *#stickernobg*`, id)
+            }
+            break            
         case '#sticker':
         case '#stiker':
             if (isMedia && type === 'image') {
@@ -95,27 +120,34 @@ module.exports = msgHandler = async (client, message) => {
         case '#stickergif':
         case '#stikergif':
         case '#sgif':
-            if (isMedia) {
-                if (mimetype === 'video/mp4' && message.duration < 10 || mimetype === 'image/gif' && message.duration < 10) {
+            if (!isMedia || type == message) return client.reply(from, 'Maaf, format pesan salah kirim video atau dengan caption *#stickerGif* maksimal 10 detik! bukan tag', id)
+            if (isMedia && type == 'video') {
+                if (mimetype === 'video/mp4' || mimetype === 'image/gif' && message.duration < 10 || quotedMsg && quotedMsg.type == 'video/mp4' || quotedMsg && quotedMsg.type == 'image/gif') {
+                    const { opts, uploadToGiphy } = require('./lib/giphy')
                     const mediaData = await decryptMedia(message, uaOverride)
-                    client.reply(from, '[WAIT] Sedang di proses⏳ silahkan tunggu ± 1 min!', id)
+                    await client.reply(from, `Mohon tunggu.. sedang diproses ⏳\nTurunkan resolusi gif/video apabila sticker gif rusak!`, id)
                     const filename = `./media/aswu.${mimetype.split('/')[1]}`
-                    await fs.writeFileSync(filename, mediaData)
-                    await exec(`gify ${filename} ./media/output.gif --fps=30 --scale=240:240`, async function (error, stdout, stderr) {
-                        const gif = await fs.readFileSync('./media/output.gif', { encoding: "base64" })
-                        await client.sendImageAsSticker(from, `data:image/gif;base64,${gif.toString('base64')}`)
+                    fs.writeFile(filename, mediaData, function (err) {
+                        if (err) {
+                            return console.log(err)
+                        }
+                        uploadToGiphy(filename).then((async (gifUrl) => {
+                            console.log(`Success upload : ${gifUrl}`)
+                            await sleep(15000)
+                            await client.sendStickerfromUrl(from, gifUrl).catch(err => console.log(err))
+                        })).catch(err => {
+                            client.reply(from, `Gagal mengkonversi sticker gif!`, id)
+                        })
                     })
-                } else (
-                    client.reply(from, '[❗] Kirim video dengan caption *#stickerGif* max 10 sec!', id)
-                )
-            }
+                }
+            } 
             break
         case '#donasi':
         case '#donate':
             client.sendLinkWithAutoPreview(from, 'https://saweria.co/donate/ijmalan', donate)
             break
         case '#tts':
-            if (args.length === 1) return client.reply(from, 'Kirim perintah **#tts [id, en, jp, ar] [teks]*, contoh *#tts id halo semua*')
+            if (args.length === 1) return client.reply(from, 'Kirim perintah *#tts [id, en, jp, ar] [teks]*, contoh *#tts id halo semua*')
             const ttsId = require('node-gtts')('id')
             const ttsEn = require('node-gtts')('en')
 	    const ttsJp = require('node-gtts')('ja')
@@ -146,29 +178,15 @@ module.exports = msgHandler = async (client, message) => {
             break
         case '#nulis':
             if (args.length === 1) return client.reply(from, 'Kirim perintah *#nulis [teks]*', id)
-            const text = body.slice(7)
+            const nulis = body.slice(7)
             client.reply(from, mess.wait, id)
-            const splitText = text.replace(/(\S+\s*){1,10}/g, '$&\n')
-            const fixHeight = splitText.split('\n').slice(0, 25).join('\n')
-            spawn('convert', [
-                './media/img/before.jpg',
-                '-font',
-                'Indie-Flower',
-                '-size',
-                '700x960',
-                '-pointsize',
-                '25',
-                '-interline-spacing',
-                '1',
-                '-annotate',
-                '+170+222',
-                fixHeight,
-                './media/img/after.jpg'
-            ])
-            .on('error', () => client.reply(from, 'Error gan', id))
-            .on('exit', () => {
-                client.sendImage(from, './media/img/after.jpg', 'nulis.jpg', 'Nih Sayang❤', id)
-            })
+            let urlnulis = "https://mhankbarbar.herokuapp.com/nulis?text="+nulis;
+            let settingnulis = { method: "Get" };
+            await fetch(urlnulis, settingnulis)
+            .then(res => res.json())
+            .then((json) => {
+                client.sendFile(from, json.result, 'tulisan.jpg', `Buat kamuu ${pushname}`, id);
+            }).catch(e => client.reply(from, "Error terdeteksi, mohon jangan gunakan simbol/karakter tidak dikenal!", id));
             break
         case '#ytmp3':
             if (args.length === 1) return client.reply(from, 'Kirim perintah *#ytmp3 [linkYt]*, untuk contoh silahkan kirim perintah *#readme*')
@@ -230,30 +248,32 @@ module.exports = msgHandler = async (client, message) => {
             }
             break
         case '#fb':
-            if (args.length === 1) return client.reply(from, 'Kirim perintah *#fb [linkFb]* untuk contoh silahkan kirim perintah *#readme*', id)
-            if (!args[1].includes('facebook.com')) return client.reply(from, mess.error.Iv, id)
-            client.reply(from, mess.wait, id)
-            const epbe = await fb(args[1])
-            client.sendFileFromUrl(from, epbe.url, `Cuih${epbe.exts}`, epbe.capt, id)
+            try {
+                if (args.length === 1) return client.reply(from, 'Kirim perintah *#fb [linkFb]* untuk contoh silahkan kirim perintah *#readme*', id)
+                if (!args[1].includes('facebook.com')) return client.reply(from, mess.error.Iv, id)
+                linkefbeh = args[1].toString()
+                client.reply(from, mess.wait, id)
+                const epbe = await fb(args[1])
+                client.sendFileFromUrl(from, epbe.url, `Cuih${epbe.exts}`, epbe.capt, id)
+            } catch (err) {
+                console.log(err)
+            }
             break
         /*case '#creator':
             client.sendContact(from, '6285892766102@c.us')
             break*/
         case '#ig':
-            if (args.length === 1) return client.reply(from, 'Kirim perintah *#ig [linkIg]* untuk contoh silahkan kirim perintah *#readme*')
-            if (!args[1].match(isUrl) && !args[1].includes('instagram.com')) return client.reply(from, mess.error.Iv, id)
             try {
+                if (args.length === 1) return client.reply(from, 'Kirim perintah *#ig [linkIg]* untuk contoh silahkan kirim perintah *#readme*', id)
+                if (!args[1].includes('instagram.com')) return client.reply(from, mess.error.Iv, id)
+                linkinsta = args[1].toString()
                 client.reply(from, mess.wait, id)
-                const resp = await get.get('https://mhankbarbar.herokuapp.com/api/ig?url='+ args[1]).json()
-                if (resp.result.includes('.mp4')) {
-                    var ext = '.mp4'
-                } else {
-                    var ext = '.jpg'
-                }
-                await client.sendFileFromUrl(from, resp.result, `igeh${ext}`, '', id)
-            } catch {
-                client.reply(from, mess.error.Ig, id)
-                }
+                const igee = await ig(args[1])
+                client.sendFileFromUrl(from, igee.url, `Ignyakk${igee.exts}`, igee.capt, id)
+            } catch (err) {
+                //client.reply(from, `Kesalahan dengan kode error : ${err}`)
+                console.log(err)
+            }
             break
        /* case '!nsfw':
             if (!isGroupMsg) return client.reply(from, 'Perintah ini hanya bisa di gunakan dalam group!', id)
@@ -433,6 +453,19 @@ module.exports = msgHandler = async (client, message) => {
                 client.reply(from, 'Usage: \n#quotemaker .teks.watermark.theme\n\nEx :\n#quotemaker .ini contoh.bicit.random', id)
             }
             break
+        /*case '#ttsticker':
+            try {
+                if (args.length === 1) return client.reply(from, 'Kirim perintah *#ttsticker [teks]* \n\nEx :\n#ttsticker anzayyy*', id)
+                if (!args[1].includes('http://mrhrtz-wabot.000webhostapp.com/404.jpg')) return client.reply(from, 'Error!!!', id)
+                linkss = args[1].toString()
+                client.reply(from, mess.wait, id)
+                const ttsticker = await fb(args[1])
+                client.sendFileFromUrl(from, ttsticker.url, `Nieh...${ttsticker.exts}`, id)
+            } catch (err) {
+                //client.reply(from, `Kesalahan dengan kode error : ${err}`)
+                console.log(err)
+            }
+            break */        
         case '#linkgroup':
             if (!isBotGroupAdmins) return client.reply(from, 'Perintah ini hanya bisa di gunakan ketika bot menjadi admin', id)
             if (isGroupMsg) {
@@ -561,15 +594,17 @@ module.exports = msgHandler = async (client, message) => {
             await client.sendTextWithMentions(from, `Perintah diterima, menghapus jabatan @${mentionedJidList[0]}.`)
             break
         case '#join':
-            if (args.length === 1) return client.reply(from, 'Kirim perintah *#join* linkgroup\n\nEx:\n!#join https://chat.whatsapp.com/blablablablablabla', id)
+            if (isGroupMsg) return client.reply(from, 'Fitur ini hanya bisa di gunakan private chat dengan botnya', id)
+            if (!isOwner) return client.reply(from, 'Join ke gc lain? konfirm dulu ke owner.', id)
+            if (args.length === 1) return client.reply(from, 'Kirim perintah *#join* linkgroup\n\nEx:\n#join https://chat.whatsapp.com/blablablablablabla', id)
             const link = body.slice(6)
             const tGr = await client.getAllGroups()
-            const minMem = 5    
+            const minMem = 5
             const isLink = link.match(/(https:\/\/chat.whatsapp.com)/gi)
             const check = await client.inviteInfo(link)
             if (!isLink) return client.reply(from, 'Ini link? 👊🤬', id)
-            if (tGr.length > 15) return client.reply(from, 'Maaf jumlah group sudah maksimal!', id)
-            if (check.size < minMem) return client.reply(from, 'Member group tidak melebihi 5, bot tidak bisa masuk', id)
+            //if (tGr.length > 15) return client.reply(from, 'Maaf jumlah group sudah maksimal!', id)
+            //if (check.size < minMem) return client.reply(from, 'Member group tidak melebihi 5, bot tidak bisa masuk', id)
             if (check.status === 200) {
                 await client.joinGroupViaLink(link).then(() => client.reply(from, 'Bot akan segera masuk!'))
             } else {
@@ -754,7 +789,7 @@ module.exports = msgHandler = async (client, message) => {
             // const captiions = `Menampilkan hasil ss ${urlweb} dengan dimensi ${dimensi}`
             
             }
-            break
+            break          
         case '#quote':
         case '#quotes':
             const quotes = await get.get('https://mhankbarbar.herokuapp.com/api/randomquotes').json()
@@ -769,23 +804,7 @@ module.exports = msgHandler = async (client, message) => {
             const response = await axios.get('https://meme-api.herokuapp.com/gimme/wholesomeanimemes');
             const { postlink, title, subreddit, url, nsfw, spoiler } = response.data
             client.sendFileFromUrl(from, `${url}`, 'meme.jpg', `${title}`)
-            break            
-        case '#memegen':
-            arg = body.trim().split('.')
-            if (arg.length >= 4) {
-                client.reply(from, mess.wait, id)
-                const tema = args[3]
-                const text1 = args[1]
-                const text2 = args[2]
-                await memegen(text1 , text2, tema).then(amsu => {
-        		    client.sendFile(from, amsu , 'quotesmaker.jpg','neh...').catch(() => {
-                       client.reply(from, mess.error.Qm, id)
-                    })
-                })
-            } else {
-                client.reply(from, 'Usage: \n#memegen .text1.text2.tema\n\nEx :\n#memegen .ini contoh.bicit.atis', id)
-            }
-            break          
+            break                  
         case 'P' :    
         case '#help':
             client.sendText(from, help)
