@@ -9,11 +9,12 @@ const { spawn, exec } = require('child_process')
 /*const nhentai = require('nhentai-js')
 const { API } = require('nhentai-api')*/
 const { liriklagu, artinama, quotemaker,  ttsticker, ig, fb, sleep, jadwalTv, ss } = require('./lib/functions')
-const { help, snk, info, donate, readme, listChannel } = require('./lib/help')
+const { help, snk, info, donate, readme, listChannel, tts_list } = require('./lib/help')
 const { stdout } = require('process')
 const nsfw_ = JSON.parse(fs.readFileSync('./lib/NSFW.json'))
 const welkom = JSON.parse(fs.readFileSync('./lib/welcome.json'))
 const { RemoveBgResult, removeBackgroundFromImageBase64, removeBackgroundFromImageFile } = require('remove.bg')
+const { BikinTikel } = require('./lib/bikin_tikel')
 
 moment.tz.setDefault('Asia/Jakarta').locale('id')
 
@@ -117,6 +118,54 @@ module.exports = msgHandler = async (client, message) => {
                     client.reply(from, mess.error.St, id)
             }
             break
+        case '#stimage':
+        case '#sti':
+            if (args.length === 2) return client.reply(from, `Hai ${pushname} untuk menggunakan fitur sticker to image, mohon tag stiker! dan kirim pesan *#ttimage*`, id)
+            if (quotedMsg) {
+                client.reply(from, '_Mohon tunggu sedang mengkonversi stiker..._', id)
+                if( quotedMsg.type === 'sticker') {
+                //getStickerDecryptable is an insiders feature! 
+                    //let stickerDecryptable = await client.getStickerDecryptable(quotedMsg.id)
+                    //if(stickerDecryptable) mediaData = await decryptMedia(stickerDecryptable, uaOverride)
+                   // await client.sendImage(from, `data:${quotedMsg.mimetype};base64,${mediaData.toString('base64')}`, `${pushname}.jpg`, `Sticker berhasil dikonversi! ${pushname}`)
+                   //    } else {
+                        mediaData = await decryptMedia(quotedMsg, uaOverride)
+                        await client.sendImage(from, `data:${quotedMsg.mimetype};base64,${mediaData.toString('base64')}`, `${pushname}.jpg`, `Sticker berhasil dikonversi! ${pushname}`)
+                   //  
+                   } else {
+                        client.reply(from, `Hai ${pushname} sepertinya yang ada tag bukan stiker, untuk menggunakan fitur sticker to image, mohon tag stiker! dan kirim pesan *#stimage*`, id)
+                   }
+                } else {
+                    client.reply(from, `Hai ${pushname} untuk menggunakan fitur sticker to image, mohon tag stiker! dan kirim pesan *#stimage*`, id)
+                }
+            break
+        case '#ttsticker':
+        case '#ttstiker':
+            if (!isGroupMsg) return client.reply(from, 'Bot sekarang hanya bisa digunakan digrup saja! untuk dimasukan ke grup bot ini sifatnya berbayar, konfirmasi ke owner bot wa.me/6289673766582 untuk pertanyaan lebih lanjut', id)
+            const texk = body.slice(10)
+            client.reply(from, '_Sedang mengkonversi teks..._', id)
+            try {
+                if (quotedMsgObj == null) {
+                    const GetData = await BikinTikel(texk)
+                    if (GetData.status == false) return client.reply(from, 'Kesalahan dalam mengkonversi teks! tag tulisan atau gunakan teks setelah perintah *#ttsticker [teks]*', id)
+                    try {
+                        await client.sendImageAsSticker(from, GetData.base64)
+                    } catch (err) {
+                        console.log(err)
+                    }
+                } else {
+                    const GetData = await BikinTikel(quotedMsgObj.body)
+                    if (GetData.status == false) return client.reply(from, 'Kesalahan dalam mengkonversi teks! tag tulisan atau gunakan teks setelah perintah *#ttsticker [teks]*', id)
+                    try {
+                        await client.sendImageAsSticker(from, GetData.base64)
+                    } catch (err) {
+                        console.log(err)
+                    }
+                }
+            } catch (err){
+                console.log(err)
+            }
+            break;                        
         case '#stickergif':
         case '#stikergif':
         case '#sgif':
@@ -144,50 +193,38 @@ module.exports = msgHandler = async (client, message) => {
             break
         case '#donasi':
         case '#donate':
-            client.sendLinkWithAutoPreview(from, 'https://saweria.co/donate/ijmalan', donate)
+            client.sendLinkWithAutoPreview(from, 'https://github.com/ijmalan', donate)
             break
         case '#tts':
-            if (args.length === 1) return client.reply(from, 'Kirim perintah *#tts [id, en, jp, ar] [teks]*, contoh *#tts id halo semua*')
-            const ttsId = require('node-gtts')('id')
-            const ttsEn = require('node-gtts')('en')
-	    const ttsJp = require('node-gtts')('ja')
-            const ttsAr = require('node-gtts')('ar')
-            const dataText = body.slice(8)
-            if (dataText === '') return client.reply(from, 'Baka?', id)
-            if (dataText.length > 500) return client.reply(from, 'Teks terlalu panjang!', id)
-            var dataBhs = body.slice(5, 7)
-	    if (dataBhs == 'id') {
-                ttsId.save('./media/tts/resId.mp3', dataText, function () {
-                    client.sendPtt(from, './media/tts/resId.mp3', id)
+        if (!isGroupMsg) return client.reply(from, 'Bot sekarang hanya bisa digunakan digrup saja! untuk dimasukan ke grup bot ini sifatnya berbayar, konfirmasi ke owner bot wa.me/6285559038021 untuk pertanyaan lebih lanjut', id)
+            try {
+                if (args.length === 1) return client.reply(from, 'Kirim perintah *#tts [code_bahasa] [teks]*, contoh *#tts id halo semua*')
+                var dataBhs = args[1]      
+                const ttsMlz = require('node-gtts')(dataBhs)
+                var dataText = body.slice(8)
+                if (dataText === '') return client.reply(from, 'Masukkan teksnya', id)
+               // if (dataText.length > 500) return client.reply(from, 'Teks terlalu panjang!', id)
+                var dataBhs = body.slice(5, 7)
+                ttsMlz.save('./media/tts/tts.mp3', dataText, function () {
+                client.sendPtt(from, './media/tts/tts.mp3', id)
                 })
-            } else if (dataBhs == 'en') {
-                ttsEn.save('./media/tts/resEn.mp3', dataText, function () {
-                    client.sendPtt(from, './media/tts/resEn.mp3', id)
-                })
-            } else if (dataBhs == 'jp') {
-                ttsJp.save('./media/tts/resJp.mp3', dataText, function () {
-                    client.sendPtt(from, './media/tts/resJp.mp3', id)
-                })
-	    } else if (dataBhs == 'ar') {
-                ttsAr.save('./media/tts/resAr.mp3', dataText, function () {
-                    client.sendPtt(from, './media/tts/resAr.mp3', id)
-                })
-            } else {
-                client.reply(from, 'Masukkan data bahasa : [id] untuk indonesia, [en] untuk inggris, [jp] untuk jepang, dan [ar] untuk arab', id)
+            } catch (err){
+                console.log(err)
+                client.reply(from, tts_list, id)
             }
             break
-        case '#nulis':
-            if (args.length === 1) return client.reply(from, 'Kirim perintah *#nulis [teks]*', id)
-            const nulis = body.slice(7)
-            client.reply(from, mess.wait, id)
-            let urlnulis = "https://mhankbarbar.herokuapp.com/nulis?text="+nulis;
-            let settingnulis = { method: "Get" };
-            await fetch(urlnulis, settingnulis)
-            .then(res => res.json())
-            .then((json) => {
-                client.sendFile(from, json.result, 'tulisan.jpg', `Buat kamuu ${pushname}`, id);
-            }).catch(e => client.reply(from, "Error terdeteksi, mohon jangan gunakan simbol/karakter tidak dikenal!", id));
-            break
+        //case '#nulis':
+        //    if (args.length === 1) return client.reply(from, 'Kirim perintah *#nulis [teks]*', id)
+        //    const nulis = body.slice(7)
+        //    client.reply(from, mess.wait, id)
+        //    let urlnulis = "https://mhankbarbar.herokuapp.com/nulis?text="+nulis;
+        //    let settingnulis = { method: "Get" };
+        //    await fetch(urlnulis, settingnulis)
+        //    .then(res => res.json())
+        //    .then((json) => {
+        //        client.sendFile(from, json.result, 'tulisan.jpg', `Buat kamuu ${pushname}`, id);
+        //    }).catch(e => client.reply(from, "Error terdeteksi, mohon jangan gunakan simbol/karakter tidak dikenal!", id));
+        //    break
         case '#ytmp3':
             if (args.length === 1) return client.reply(from, 'Kirim perintah *#ytmp3 [linkYt]*, untuk contoh silahkan kirim perintah *#readme*')
             let isLinks = args[1].match(/(?:https?:\/{2})?(?:w{3}\.)?youtu(?:be)?\.(?:com|be)(?:\/watch\?v=|\/)([^\s&]+)/)
@@ -227,7 +264,7 @@ module.exports = msgHandler = async (client, message) => {
                 client.reply(from, mess.error.Yt4, id)
             }
             break
-        case '#wiki':
+        /*case '#wiki':
             if (args.length === 1) return client.reply(from, 'Kirim perintah *#wiki [query]*\nContoh : *#wiki asu*', id)
             const query_ = body.slice(6)
             const wiki = await get.get('https://mhankbarbar.herokuapp.com/api/wiki?q='+ query_).json()
@@ -246,7 +283,7 @@ module.exports = msgHandler = async (client, message) => {
             } else {
                 client.reply(from, `➸ Tempat : ${weather.result.tempat}\n\n➸ Angin : ${weather.result.angin}\n➸ Cuaca : ${weather.result.cuaca}\n➸ Deskripsi : ${weather.result.desk}\n➸ Kelembapan : ${weather.result.kelembapan}\n➸ Suhu : ${weather.result.suhu}\n➸ Udara : ${weather.result.udara}`, id)
             }
-            break
+            break*/
         case '#fb':
             try {
                 if (args.length === 1) return client.reply(from, 'Kirim perintah *#fb [linkFb]* untuk contoh silahkan kirim perintah *#readme*', id)
@@ -310,7 +347,7 @@ module.exports = msgHandler = async (client, message) => {
         /*case '!nsfwmenu':
             if (!isNsfw) return
             client.reply(from, '1. !randomHentai\n2. !randomNsfwNeko', id)
-            break*/
+            break
         case '#igstalk':
             if (args.length === 1)  return client.reply(from, 'Kirim perintah *#igStalk @username*\nConntoh *#igStalk @duar_amjay*', id)
             const stalk = await get.get('https://mhankbarbar.herokuapp.com/api/stalk?username='+ args[1]).json()
@@ -362,7 +399,7 @@ module.exports = msgHandler = async (client, message) => {
                                 return
                             }
                             console.log('stdout : '+ stdout)*/
-                            })
+                           /* })
                     } catch (err) {
                         client.reply(from, '[❗] Terjadi kesalahan, mungkin kode nuklir salah', id)
                     }
@@ -372,7 +409,7 @@ module.exports = msgHandler = async (client, message) => {
             } else {
                 client.reply(from, '[ WRONG ] Kirim perintah *!nh [nuClear]* untuk contoh kirim perintah *!readme*')
             }
-        	break 
+        	break*/ 
         case '#brainly':
             if (args.length >= 2){
                 const BrainlySearch = require('./lib/brainly')
@@ -821,6 +858,10 @@ module.exports = msgHandler = async (client, message) => {
         case '#snk':
             client.reply(from, snk, id)
             break
+         default:
+            if (command.startsWith('#')) {
+                client.reply(from, `Hai ${pushname} sayangnya.. bot tidak mengerti perintah ${args[0]}, mohon ketik *#menu*`, id)
+            }    
         }
     } catch (err) {
         console.log(color('[ERROR]', 'red'), err)
