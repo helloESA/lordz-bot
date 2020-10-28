@@ -1,6 +1,7 @@
 ﻿const { decryptMedia } = require('@open-wa/wa-decrypt')
 const fs = require('fs-extra')
 const fetch = require('node-fetch')
+const download = require('download-file')
 const axios = require('axios')
 const moment = require('moment-timezone')
 const get = require('got')
@@ -8,7 +9,7 @@ const color = require('./lib/color')
 const { spawn, exec } = require('child_process')
 /*const nhentai = require('nhentai-js')
 const { API } = require('nhentai-api')*/
-const { liriklagu, artinama, quotemaker,  ttsticker, ig, fb, sleep, jadwalTv, ss } = require('./lib/functions')
+const { liriklagu, quotemaker, tulis, ig, fb, twt, sleep, jadwalTv, ss } = require('./lib/functions')
 const { help, snk, info, donate, readme, listChannel, tts_list } = require('./lib/help')
 const { stdout } = require('process')
 const nsfw_ = JSON.parse(fs.readFileSync('./lib/NSFW.json'))
@@ -213,57 +214,88 @@ module.exports = msgHandler = async (client, message) => {
                 client.reply(from, tts_list, id)
             }
             break
-        //case '#nulis':
-        //    if (args.length === 1) return client.reply(from, 'Kirim perintah *#nulis [teks]*', id)
-        //    const nulis = body.slice(7)
-        //    client.reply(from, mess.wait, id)
-        //    let urlnulis = "https://mhankbarbar.herokuapp.com/nulis?text="+nulis;
-        //    let settingnulis = { method: "Get" };
-        //    await fetch(urlnulis, settingnulis)
-        //    .then(res => res.json())
-        //    .then((json) => {
-        //        client.sendFile(from, json.result, 'tulisan.jpg', `Buat kamuu ${pushname}`, id);
-        //    }).catch(e => client.reply(from, "Error terdeteksi, mohon jangan gunakan simbol/karakter tidak dikenal!", id));
-        //    break
+        case '#nulis':
+            if (args.length === 1) return client.reply(from, 'Kirim perintah *#nulis [teks]*', id)
+            const nulis = encodeURIComponent(body.slice(7))
+            client.reply(from, `_Bot lagi menulis ni ${pushname}..._`, id)
+            let urlnulis = `https://mhankbarbar.herokuapp.com/nulis?text=${nulis}&apiKey=IsDssiTLL9hE7ofCV1Ot`
+            await fetch(urlnulis, {method: "GET"})
+            .then(res => res.json())
+            .then(async (json) => {
+                await client.sendFileFromUrl(from, json.result, 'Nulis.jpg', 'Oke udah ni tulisannya', id)
+            }).catch(e => client.reply(from, "Error: "+ e));
+            break           
         case '#ytmp3':
+            if (!isGroupMsg) return client.reply(from, 'Bot sekarang hanya bisa digunakan digrup saja! untuk dimasukan ke grup bot ini sifatnya berbayar, konfirmasi ke owner bot wa.me/6289673766582 untuk pertanyaan lebih lanjut', id)
             if (args.length === 1) return client.reply(from, 'Kirim perintah *#ytmp3 [linkYt]*, untuk contoh silahkan kirim perintah *#readme*')
             let isLinks = args[1].match(/(?:https?:\/{2})?(?:w{3}\.)?youtu(?:be)?\.(?:com|be)(?:\/watch\?v=|\/)([^\s&]+)/)
             if (!isLinks) return client.reply(from, mess.error.Iv, id)
             try {
                 client.reply(from, mess.wait, id)
-                const resp = await get.get('https://mhankbarbar.herokuapp.com/api/yta?url='+ args[1]).json()
-                if (resp.error) {
+                const response1 = await fetch(`https://api.vhtear.com/ytdl?link=${args[1]}&apikey=botnolepbydandyproject`)
+                const mhankyt3 = await fetch(`http://mhankbarbar.herokuapp.com/api/yta?url=${args[1]}&apiKey=IsDssiTLL9hE7ofCV1Ot`)
+                if (!response1.ok) throw new Error(`unexpected response vhtear ${response1.statusText}`)
+                if (!mhankyt3.ok) throw new Error(`Error barbaryt3 ${mhankyt3.statusText}`)
+                const barbarytp3 = await mhankyt3.json()
+                const json = await response1.json()
+                const jsonre = await json.result
+                if (response1.error) {                          //Send File MP3 Berbentuk Dokumen
                     client.reply(from, resp.error, id)
                 } else {
-                    const { title, thumb, filesize, result } = await resp
-                    if (Number(filesize.split(' MB')[0]) >= 30.00) return client.reply(from, 'Maaf durasi video sudah melebihi batas maksimal!', id)
-                    client.sendFileFromUrl(from, thumb, 'thumb.jpg', `➸ *Title* : ${title}\n➸ *Filesize* : ${filesize}\n\nSilahkan tunggu sebentar proses pengiriman file membutuhkan waktu beberapa menit.`, id)
-                    await client.sendFileFromUrl(from, result, `${title}.mp3`, '', id).catch(() => client.reply(from, mess.error.Yt3, id))
+                    // Data memenuhi syarat?
+
+                    const { ext, filesize, result, status, thumb } = await barbarytp3
+                    
+                    if (Number(filesize.split(' MB')[0]) >= 30.00) return client.reply(from, '_Mohon maaf sepertinya durasi video telah melebihi batas._', id)
+                    console.log(`BarBar Giliran ${ext}\n${filesize}\n${status}`)
+                    const { title, UrlVideo, UrlMp3, imgUrl } = await jsonre
+                    const captions = `*Data Berhasil Didapatkan!*\n\n*Title* : ${title}\n*Ext* : MP3\n*Filesize* : ${filesize}\n\n_Silahkan tunggu file media sedang dikirim mungkin butuh beberapa menit_`
+                    client.sendFileFromUrl(from, imgUrl, `thumb.jpg`, captions, id)
+                    //await client.sendAudio(from, UrlMp3, id)        
+                    await client.sendFileFromUrl(from, result, `${title}.mp3`, '', id).catch(() => client.reply(from, mess.error.Yt4, id))
+
                 }
             } catch (err) {
                 client.sendText(ownerNumber, 'Error ytmp3 : '+ err)
                 client.reply(from, mess.error.Yt3, id)
             }
-            break
+            break   
         case '#ytmp4':
-            if (args.length === 1) return client.reply(from, 'Kirim perintah *#ytmp4 [linkYt]*, untuk contoh silahkan kirim perintah *#readme*')
-            let isLin = args[1].match(/(?:https?:\/{2})?(?:w{3}\.)?youtu(?:be)?\.(?:com|be)(?:\/watch\?v=|\/)([^\s&]+)/)
-            if (!isLin) return client.reply(from, mess.error.Iv, id)
+            if (!isGroupMsg) return client.reply(from, 'Bot sekarang hanya bisa digunakan digrup saja! untuk dimasukan ke grup bot ini sifatnya berbayar, konfirmasi ke owner bot wa.me/6289673766582 untuk pertanyaan lebih lanjut', id)
+            if (args.length === 1) return client.reply(from, 'Kirim perintah *#ytmp4* _linkYt_, untuk contoh silahkan kirim perintah *#readme*', id)
+            let isLinks2 = args[1].match(/(?:https?:\/{2})?(?:w{3}\.)?youtu(?:be)?\.(?:com|be)(?:\/watch\?v=|\/)([^\s&]+)/)
+            if (!isLinks2) return client.reply(from, mess.error.Iv, id)
             try {
                 client.reply(from, mess.wait, id)
-                const ytv = await get.get('https://mhankbarbar.herokuapp.com/api/ytv?url='+ args[1]).json()
-                if (ytv.error) {
-                    client.reply(from, ytv.error, id)
+                //const response1 = await fetch(`https://api.vhtear.com/ytdl?link=${args[1]}&apikey=botnolepbydandyproject`)
+                const mhankyt4 = await fetch(`http://mhankbarbar.herokuapp.com/api/ytv?url=${args[1]}&apiKey=IsDssiTLL9hE7ofCV1Ot`)
+                //if (!response1.ok) throw new Error(`unexpected response vhtear ${response1.statusText}`);
+                if (!mhankyt4.ok) throw new Error(`Err mhankyt4 ${mhankyt4.statusText}`)
+                //const json = await response1.json()
+                const barbarytp4 = await mhankyt4.json()
+                //const jsonre = await json.result
+                if (mhankyt4.error) {
+                    client.reply(from, resp.error, id)
                 } else {
-                    if (Number(ytv.filesize.split(' MB')[0]) > 40.00) return client.reply(from, 'Maaf durasi video sudah melebihi batas maksimal!', id)
-                    client.sendFileFromUrl(from, ytv.thumb, 'thumb.jpg', `➸ *Title* : ${ytv.title}\n➸ *Filesize* : ${ytv.filesize}\n\nSilahkan tunggu sebentar proses pengiriman file membutuhkan waktu beberapa menit.`, id)
-                    await client.sendFileFromUrl(from, ytv.result, `${ytv.title}.mp4`, '', id).catch(() => client.reply(from, mess.error.Yt4, id))
+                    const { title, ext, thumb, filesize, resolution, result } = await barbarytp4
+                    //const { title, UrlVideo, UrlMp3, imgUrl } = await jsonre
+                    //try {
+                        const captions = `*Data Berhasil Didapatkan!*\n\n*Title* : ${title}\n*Ext* : MP4\n*Filesize* : ${filesize}\n\n_Silahkan tunggu file media sedang dikirim mungkin butuh beberapa menit_`
+                        //console.log(response1)                    
+                        client.sendFileFromUrl(from, thumb, `thumb.jpg`, captions, id)
+                        await client.sendFileFromUrl(from, result, `${title}.mp4`, `Video telah terkirim ${pushname}`, id).catch(() => client.reply(from, mess.error.Yt3, id))
+                    //} catch (err){
+                    //    console.log(err)
+                    //    client.reply(from, `_Download file gagal sedang mengganti metode..._`)
+                    //    await client.sendFileFromUrl(from, result, `${title}.mp4`, `Video telah terkirim ${pushname}`, id).catch(() => client.reply(from, mess.error.Yt3, id))
+                    //}
                 }
-            } catch (er) {
-                client.sendText(ownerNumber, 'Error ytmp4 : '+ er)
+            } catch (err) {
+                client.sendText(ownerNumber, 'Error ytmp3 : '+ err)
                 client.reply(from, mess.error.Yt4, id)
+                console.log(err)
             }
-            break
+            break         
         /*case '#wiki':
             if (args.length === 1) return client.reply(from, 'Kirim perintah *#wiki [query]*\nContoh : *#wiki asu*', id)
             const query_ = body.slice(6)
@@ -273,18 +305,20 @@ module.exports = msgHandler = async (client, message) => {
             } else {
                 client.reply(from, `➸ *Query* : ${query_}\n\n➸ *Result* : ${wiki.result}`, id)
             }
-            break
+            break*/
         case '#cuaca':
             if (args.length === 1) return client.reply(from, 'Kirim perintah *#cuaca [tempat]*\nContoh : *#cuaca tangerang', id)
             const tempat = body.slice(7)
-            const weather = await get.get('https://mhankbarbar.herokuapp.com/api/cuaca?q='+ tempat).json()
+            client.reply(`_Sedang mencari data Cuaca ${tempat}...._`)
+            const weather = await get.get(`https://mhankbarbar.herokuapp.com/api/cuaca?q=${tempat}&apiKey=IsDssiTLL9hE7ofCV1Ot`).json()
             if (weather.error) {
                 client.reply(from, weather.error, id)
             } else {
                 client.reply(from, `➸ Tempat : ${weather.result.tempat}\n\n➸ Angin : ${weather.result.angin}\n➸ Cuaca : ${weather.result.cuaca}\n➸ Deskripsi : ${weather.result.desk}\n➸ Kelembapan : ${weather.result.kelembapan}\n➸ Suhu : ${weather.result.suhu}\n➸ Udara : ${weather.result.udara}`, id)
             }
-            break*/
+            break
         case '#fb':
+        if (!isGroupMsg) return client.reply(from, 'Bot sekarang hanya bisa digunakan digrup saja! untuk dimasukan ke grup bot ini sifatnya berbayar, konfirmasi ke owner bot wa.me/6289673766582 untuk pertanyaan lebih lanjut', id)        
             try {
                 if (args.length === 1) return client.reply(from, 'Kirim perintah *#fb [linkFb]* untuk contoh silahkan kirim perintah *#readme*', id)
                 if (!args[1].includes('facebook.com')) return client.reply(from, mess.error.Iv, id)
@@ -296,6 +330,37 @@ module.exports = msgHandler = async (client, message) => {
                 console.log(err)
             }
             break
+        case '#twt':
+        if (!isGroupMsg) return client.reply(from, 'Bot sekarang hanya bisa digunakan digrup saja! untuk dimasukan ke grup bot ini sifatnya berbayar, konfirmasi ke owner bot wa.me/6289673766582 untuk pertanyaan lebih lanjut', id)
+            try {
+                if (args.length === 1) return client.reply(from, 'Kirim perintah *#twt* _linkVideoTwitter_ untuk contoh silahkan kirim perintah *#readme*', id)
+                if (!args[1].includes('twitter.com')) return client.reply(from, mess.error.Iv, id)
+                linktwit = args[1].toString()
+                client.reply(from, mess.wait, id)
+                const twit = await twt(args[1])
+                //client.sendLinkWithAutoPreview(from, twit.link, twit.capt)
+                client.sendFileFromUrl(from, twit.url, `Twtny${twit.exts}`, twit.capt, id)
+            } catch (err) {
+                //client.reply(from, `Kesalahan dengan kode error : ${err}`)
+                console.log(err)
+            }
+            break 
+        case '#wiki':
+            if (!isGroupMsg) return client.reply(from, 'Bot sekarang hanya bisa digunakan digrup saja! untuk dimasukan ke grup bot ini sifatnya berbayar, konfirmasi ke owner bot wa.me/62896737665821 untuk pertanyaan lebih lanjut', id)
+            if (args.length === 1) return client.reply(from, 'Kirim perintah *#wiki* _Kata Kunci_\nContoh : **#wiki* _asu_ ', id)
+            const query_ = body.slice(6)
+            const wiki = await get.get(`https://api.vhtear.com/wikipedia?query=${encodeURIComponent(query_)}&apikey=botnolepbydandyproject`).json()
+            if (wiki.error) {
+                client.reply(from, wiki.error, id)
+            } else {
+                client.reply(from, '_Sedang mencari data..._', id)
+                console.log(wiki)
+                //client.reply(from, `_Mohon tunggu sedang mencari data.._`, id)
+                //client.reply(from, `➣ *Query* : ${query_}\n\n➣ *Result* : ${wiki.result}`, id)
+                client.sendFileFromUrl(from, wiki.result.ImgResult[0], wiki.jpg, `*Hasil wikipedia dari ${query_}*\n\n${wiki.result.Info}`, id).catch(() => client.reply(from, `*Hasil wikipedia dari ${query_}*\n\n${wiki.result.Info}`, id))
+                //console.log(wiki.result.ImgResult[0],wiki.result.Info)
+            }
+            break                       
         /*case '#creator':
             client.sendContact(from, '6285892766102@c.us')
             break*/
@@ -312,6 +377,12 @@ module.exports = msgHandler = async (client, message) => {
                 console.log(err)
             }
             break
+        case '#family100':
+            if (!isGroupMsg) return client.reply(from, 'Bot sekarang hanya bisa digunakan digrup saja! untuk dimasukan ke grup bot ini sifatnya berbayar, konfirmasi ke owner bot wa.me/6289673766582 untuk pertanyaan lebih lanjut', id)
+            const family = await get.get('https://api.vhtear.com/family100&apikey=botnolepbydandyproject').json()
+            const seratus = `*FAMILY 100*\n\n*Pertanyaan* : ${family.result.soal}\n*Jawaban* : ${family.result.jawaban}`
+            client.reply(from, seratus, id)            
+            break                   
        /* case '!nsfw':
             if (!isGroupMsg) return client.reply(from, 'Perintah ini hanya bisa di gunakan dalam group!', id)
             if (!isGroupAdmins) return client.reply(from, 'Perintah ini hanya bisa di gunakan oleh Admin group!', id)
@@ -347,16 +418,38 @@ module.exports = msgHandler = async (client, message) => {
         /*case '!nsfwmenu':
             if (!isNsfw) return
             client.reply(from, '1. !randomHentai\n2. !randomNsfwNeko', id)
-            break
-        case '#igstalk':
-            if (args.length === 1)  return client.reply(from, 'Kirim perintah *#igStalk @username*\nConntoh *#igStalk @duar_amjay*', id)
-            const stalk = await get.get('https://mhankbarbar.herokuapp.com/api/stalk?username='+ args[1]).json()
+            break*/
+        case '#igstalk':   
+            if (!isGroupMsg) return client.reply(from, 'Bot sekarang hanya bisa digunakan digrup saja! untuk dimasukan ke grup bot ini sifatnya berbayar, konfirmasi ke owner bot wa.me/6289673766582 untuk pertanyaan lebih lanjut', id)
+            if (args.length === 1)  return client.reply(from, 'Kirim perintah *#igStalk @username*\nContoh *#igStalk @ijmalan*', id)
+            client.reply(from, `_Sedang mencari data profil..._`, id)
+            const stalk = await get.get(`https://api.vhtear.com/igprofile?query=${args[1]}&apikey=botnolepbydandyproject`).json()
             if (stalk.error) return client.reply(from, stalk.error, id)
-            const { Biodata, Jumlah_Followers, Jumlah_Following, Jumlah_Post, Name, Username, Profile_pic } = stalk
-            const caps = `➸ *Nama* : ${Name}\n➸ *Username* : ${Username}\n➸ *Jumlah Followers* : ${Jumlah_Followers}\n➸ *Jumlah Following* : ${Jumlah_Following}\n➸ *Jumlah Postingan* : ${Jumlah_Post}\n➸ *Biodata* : ${Biodata}`
-            await client.sendFileFromUrl(from, Profile_pic, 'Profile.jpg', caps, id)
+            const { biography, follower, follow, post_count, full_name, username, picture, is_private } = stalk.result
+            const caps = `➸ *Nama* : ${full_name}\n➸ *Username* : ${username}\n➸ *Jumlah Followers* : ${follower}\n➸ *Jumlah Following* : ${follow}\n➸ *Jumlah Postingan* : ${post_count}\n➸ *Biodata* : ${biography}`
+            await client.sendFileFromUrl(from, picture, 'Profile.jpg', caps, id)
             break
-        case '#infogempa':
+        case '#ytsearch':
+        case '#searchyt':
+            if (!isGroupMsg) return client.reply(from, 'Bot sekarang hanya bisa digunakan digrup saja! untuk dimasukan ke grup bot ini sifatnya berbayar, konfirmasi ke owner bot wa.me/628967376682 untuk pertanyaan lebih lanjut', id)
+            if (args.length === 1) return client.reply(from, 'Kirim perintah *#searchyt* _Channel/Title YT yang akan dicari_')
+            const keywot = body.slice(10)
+            try {
+                client.reply(from, '_Sedang mencari data..._')
+                const response2 = await fetch(`https://api.vhtear.com/youtube?query=${encodeURIComponent(keywot)}&apikey=botnolepbydandyproject`)
+                if (!response2.ok) throw new Error(`unexpected response ${response2.statusText}`)
+                const jsonserc = await response2.json()
+                const { result } = await jsonserc
+                let xixixi = `*Hasil pencarian dari ${keywot}*\n`
+                for (let i = 0; i < result.length; i++) {
+                    xixixi += `\n*Title* : ${result[i].title}\n*Channel* : ${result[i].channel}\n*URL* : ${result[i].urlyt}\n*Durasi* : ${result[i].duration}\n*Views* : ${result[i].views}\n`
+                }
+                await client.sendFileFromUrl(from, result[0].image, 'thumbserc.jpg', xixixi, id)
+            } catch (err) {
+                    console.log(err)
+            }
+            break            
+        /*case '#infogempa':
             const bmkg = await get.get('https://mhankbarbar.herokuapp.com/api/infogempa').json()
             const { potensi, koordinat, lokasi, kedalaman, magnitude, waktu, map } = bmkg
             const hasil = `*${waktu}*\n📍 *Lokasi* : *${lokasi}*\n〽️ *Kedalaman* : *${kedalaman}*\n💢 *Magnitude* : *${magnitude}*\n🔘 *Potensi* : *${potensi}*\n📍 *Koordinat* : *${koordinat}*`
@@ -489,20 +582,7 @@ module.exports = msgHandler = async (client, message) => {
             } else {
                 client.reply(from, 'Usage: \n#quotemaker .teks.watermark.theme\n\nEx :\n#quotemaker .ini contoh.bicit.random', id)
             }
-            break
-        /*case '#ttsticker':
-            try {
-                if (args.length === 1) return client.reply(from, 'Kirim perintah *#ttsticker [teks]* \n\nEx :\n#ttsticker anzayyy*', id)
-                if (!args[1].includes('http://mrhrtz-wabot.000webhostapp.com/404.jpg')) return client.reply(from, 'Error!!!', id)
-                linkss = args[1].toString()
-                client.reply(from, mess.wait, id)
-                const ttsticker = await fb(args[1])
-                client.sendFileFromUrl(from, ttsticker.url, `Nieh...${ttsticker.exts}`, id)
-            } catch (err) {
-                //client.reply(from, `Kesalahan dengan kode error : ${err}`)
-                console.log(err)
-            }
-            break */        
+            break       
         case '#linkgroup':
             if (!isBotGroupAdmins) return client.reply(from, 'Perintah ini hanya bisa di gunakan ketika bot menjadi admin', id)
             if (isGroupMsg) {
@@ -668,16 +748,17 @@ module.exports = msgHandler = async (client, message) => {
         case '#chord':
             if (args.length === 1) return client.reply(from, 'Kirim perintah *#chord [query]*, contoh *#chord aku bukan boneka*', id)
             const query__ = body.slice(7)
-            const chord = await get.get('https://mhankbarbar.herokuapp.com/api/chord?q='+ query__).json()
+            const chord = await get.get('https://api.i-tech.id/tools/chord?key=ZEL5ZL-Wm5Psl-66gG9x-W3FHEa-97bm8g&query='+ query__).json()
             if (chord.error) return client.reply(from, chord.error, id)
             client.reply(from, chord.result, id)
             break
         case '#artinama':
             if (args.length === 1) return client.reply(from, 'Kirim perintah *#artinama [nama]*, contoh *#artinama ijmal*', id)
-            const namaarti = body.slice(7)
-            const arti = await artinama(namaarti)
-            client.reply(from, arti, id)
-            break          
+            const artihah = body.slice(10)
+            const arte = await get.get('https://api.vhtear.com/artinama?nama='+artihah+'&apikey=botnolepbydandyproject').json()
+            const { hasil } = arte.result
+            client.reply(from, hasil, id)
+            break
        /* case '!listdaerah':
             const listDaerah = await get('https://mhankbarbar.herokuapp.com/daerah').json()
             client.reply(from, listDaerah, id)
@@ -692,7 +773,7 @@ module.exports = msgHandler = async (client, message) => {
         case '#jadwalshalat':
             if (args.length === 1) return client.reply(from, '[❗] Kirim perintah *#jadwalShalat [daerah]*\ncontoh : *#jadwalShalat Tangerang*\nUntuk list daerah kirim perintah *!listDaerah*')
             const daerah = body.slice(14)
-            const jadwalShalat = await get.get(`https://mhankbarbar.herokuapp.com/api/jadwalshalat?daerah=${daerah}`).json()
+            const jadwalShalat = await get.get(`https://mhankbarbar.herokuapp.com/api/jadwalshalat?daerah=${daerah}&apiKey=IsDssiTLL9hE7ofCV1Ot`).json()
             if (jadwalShalat.error) return client.reply(from, jadwalShalat.error, id)
             const { Imsyak, Subuh, Dhuha, Dzuhur, Ashar, Maghrib, Isya } = await jadwalShalat
             arrbulan = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
