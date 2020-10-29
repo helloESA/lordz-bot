@@ -10,7 +10,7 @@ const { spawn, exec } = require('child_process')
 /*const nhentai = require('nhentai-js')
 const { API } = require('nhentai-api')*/
 const { liriklagu, quotemaker, tulis, ig, fb, twt, sleep, jadwalTv, ss } = require('./lib/functions')
-const { help, snk, info, donate, readme, listChannel, tts_list } = require('./lib/help')
+const { help, snk, info, donate, readme, listChannel, tts_list, theme_meme } = require('./lib/help')
 const { stdout } = require('process')
 const nsfw_ = JSON.parse(fs.readFileSync('./lib/NSFW.json'))
 const welkom = JSON.parse(fs.readFileSync('./lib/welcome.json'))
@@ -321,7 +321,7 @@ module.exports = msgHandler = async (client, message) => {
                         to: lang
                         })
                       .then((res) => client.reply(from, res.text, id))
-                      .catch((err) => client.reply(from, `Sepertinya tidak ada data bahasa ${lang}\n\n${bahasa_list}`, id))
+                      .catch((err) => client.reply(from, `Sepertinya tidak ada data bahasa ${lang}\n\n${tts_list}`, id))
                     // console.log(result.data[0])
                 }
                 trans(dataTextReal, lang) 
@@ -983,21 +983,18 @@ module.exports = msgHandler = async (client, message) => {
             
             }
             break 
-        /*case '#memecustom':
-           if (args.length === 1) return client.reply(from, 'Kirim perintah *#nulis [teks]*', id)
-            args = body.trim().split('.')
-            if (arg.length >= 4){ 
-                const temanya = args[1]
-                const tekss1 = args[2]
-                const tekss2= args[3]
-            let mememak =  `https://api.memegen.link/images/${temanya}/${tekss1}/${tekss2}.png`
-            await fetch(mememak, {method: "GET"})
-            .then(res => res.json())
-            .then(async (json) => {
-                await client.sendFileFromUrl(from, json.result, 'memek.jpg', 'nehh..', id)
-            }).catch(e => client.reply(from, "Error: "+ e));
-        }
-            break */     
+        case '#mememaker':
+                arg = body.trim().split('.')
+                if (arg.length >= 4) {
+                const temanya = arg[1]
+                const tekss1 = arg[2]
+                const tekss2= arg[3]
+            client.sendFileFromUrl(from, `https://api.memegen.link/images/${temanya}/${tekss1}/${tekss2}`,'memem.jpg', '_Dah jadi Nih.._', id).then(apatuch => console.log(apatuch)).catch(err => {
+                })
+            } else {
+                client.reply(from, `${theme_meme}`, id)
+            }
+            break    
         case '#quote':
         case '#quotes':
             const quotes = await get.get('https://mhankbarbar.herokuapp.com/api/randomquotes').json()
