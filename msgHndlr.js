@@ -16,6 +16,7 @@ const nsfw_ = JSON.parse(fs.readFileSync('./lib/NSFW.json'))
 const welkom = JSON.parse(fs.readFileSync('./lib/welcome.json'))
 const { RemoveBgResult, removeBackgroundFromImageBase64, removeBackgroundFromImageFile } = require('remove.bg')
 const { BikinTikel } = require('./lib/bikin_tikel')
+const translate = require('@vitalets/google-translate-api');
 
 moment.tz.setDefault('Asia/Jakarta').locale('id')
 
@@ -61,7 +62,9 @@ module.exports = msgHandler = async (client, message) => {
         const groupAdmins = isGroupMsg ? await client.getGroupAdmins(groupId) : ''
         const isGroupAdmins = isGroupMsg ? groupAdmins.includes(sender.id) : false
         const isBotGroupAdmins = isGroupMsg ? groupAdmins.includes(botNumber + '@c.us') : false
-        const ownerNumber = '6283159125945@c.us'
+        const ownerNumber = '6289673766582@c.us'
+        const isLordzOwner = 'LordZ' 
+        const isOOwner = sender.pushname === isLordzOwner
         const isOwner = sender.id === ownerNumber
         const isBlocked = blockNumber.includes(sender.id)
         const isNsfw = isGroupMsg ? nsfw_.includes(chat.id) : false
@@ -170,28 +173,21 @@ module.exports = msgHandler = async (client, message) => {
         case '#stickergif':
         case '#stikergif':
         case '#sgif':
-            if (!isMedia || type == message) return client.reply(from, 'Maaf, format pesan salah kirim video atau dengan caption *#stickerGif* maksimal 10 detik! bukan tag', id)
-            if (isMedia && type == 'video') {
-                if (mimetype === 'video/mp4' || mimetype === 'image/gif' && message.duration < 10 || quotedMsg && quotedMsg.type == 'video/mp4' || quotedMsg && quotedMsg.type == 'image/gif') {
-                    const { opts, uploadToGiphy } = require('./lib/giphy')
+            if (isMedia) {
+                if (mimetype === 'video/mp4' && message.duration < 10 || mimetype === 'image/gif' && message.duration < 10) {
                     const mediaData = await decryptMedia(message, uaOverride)
-                    await client.reply(from, `Mohon tunggu.. sedang diproses ⏳\nTurunkan resolusi gif/video apabila sticker gif rusak!`, id)
-                    const filename = `./media/aswu.${mimetype.split('/')[1]}`
-                    fs.writeFile(filename, mediaData, function (err) {
-                        if (err) {
-                            return console.log(err)
-                        }
-                        uploadToGiphy(filename).then((async (gifUrl) => {
-                            console.log(`Success upload : ${gifUrl}`)
-                            await sleep(15000)
-                            await client.sendStickerfromUrl(from, gifUrl).catch(err => console.log(err))
-                        })).catch(err => {
-                            client.reply(from, `Gagal mengkonversi sticker gif!`, id)
-                        })
+                    client.reply(from, `_Mohon tunggu.. sedang diproses ⏳_`, id)
+                        const filename = `./media/aswu.${mimetype.split('/')[1]}`
+                    await fs.writeFileSync(filename, mediaData)
+                    await exec(`gifify ${filename} -o ./media/output.gif --fps=30 --resize=240:240`, async function (error, stdout, stderr) {
+                        const gif = await fs.readFileSync('./media/output.gif', { encoding: "base64" })
+                        await client.sendImageAsSticker(from, `data:image/gif;base64,${gif.toString('base64')}`)
                     })
-                }
-            } 
-            break
+                } else (
+                    client.reply(from, `_Gagal mengkonversi sticker gif⚠️_`, id)
+                )
+            }
+            break                       
         case '#donasi':
         case '#donate':
             client.sendLinkWithAutoPreview(from, 'https://github.com/ijmalan', donate)
@@ -222,7 +218,7 @@ module.exports = msgHandler = async (client, message) => {
             await fetch(urlnulis, {method: "GET"})
             .then(res => res.json())
             .then(async (json) => {
-                await client.sendFileFromUrl(from, json.result, 'Nulis.jpg', 'Oke udah ni tulisannya', id)
+                await client.sendFileFromUrl(from, json.result, 'Nulis.jpg', `Udah Nih ${pushname}❤`, id)
             }).catch(e => client.reply(from, "Error: "+ e));
             break           
         case '#ytmp3':
@@ -239,13 +235,20 @@ module.exports = msgHandler = async (client, message) => {
                 const barbarytp3 = await mhankyt3.json()
                 const json = await response1.json()
                 const jsonre = await json.result
-                if (response1.error) {                          //Send File MP3 Berbentuk Dokumen
-                    client.reply(from, resp.error, id)
+                if (barbarytp3.status == false) {                          //Send File MP3 Berbentuk Dokumen
+                    client.reply(from, `_Kesalahan sedang mengganti metode download..._`, id)
+                    try {
+                        const { title, UrlVideo, UrlMp3, imgUrl } = await jsonre
+                        const captions = `*Data Berhasil Didapatkan!*\n\n*Title* : ${title}\n*Ext* : MP3\n\n_Silahkan tunggu file media sedang dikirim mungkin butuh beberapa menit_`
+                        client.sendFileFromUrl(from, imgUrl, `thumb.jpg`, captions, id)
+                        await client.sendFileFromUrl(from, UrlMp3, `${title}.mp3`, '', id).catch(() => client.reply(from, mess.error.Yt4, id))
+                    } catch (err){
+                        console.log(err)
+                    }
                 } else {
                     // Data memenuhi syarat?
 
                     const { ext, filesize, result, status, thumb } = await barbarytp3
-                    
                     if (Number(filesize.split(' MB')[0]) >= 30.00) return client.reply(from, '_Mohon maaf sepertinya durasi video telah melebihi batas._', id)
                     console.log(`BarBar Giliran ${ext}\n${filesize}\n${status}`)
                     const { title, UrlVideo, UrlMp3, imgUrl } = await jsonre
@@ -267,16 +270,25 @@ module.exports = msgHandler = async (client, message) => {
             if (!isLinks2) return client.reply(from, mess.error.Iv, id)
             try {
                 client.reply(from, mess.wait, id)
-                //const response1 = await fetch(`https://api.vhtear.com/ytdl?link=${args[1]}&apikey=botnolepbydandyproject`)
+                const response1 = await fetch(`https://api.vhtear.com/ytdl?link=${args[1]}&apikey=botnolepbydandyproject`)
                 const mhankyt4 = await fetch(`http://mhankbarbar.herokuapp.com/api/ytv?url=${args[1]}&apiKey=IsDssiTLL9hE7ofCV1Ot`)
-                //if (!response1.ok) throw new Error(`unexpected response vhtear ${response1.statusText}`);
+                if (!response1.ok) throw new Error(`unexpected response vhtear ${response1.statusText}`);
                 if (!mhankyt4.ok) throw new Error(`Err mhankyt4 ${mhankyt4.statusText}`)
-                //const json = await response1.json()
+                const json = await response1.json()
                 const barbarytp4 = await mhankyt4.json()
-                //const jsonre = await json.result
-                if (mhankyt4.error) {
-                    client.reply(from, resp.error, id)
+                const jsonre = await json.result
+                 if (barbarytp4.status == false) {                          //Send File MP3 Berbentuk Dokumen
+                    client.reply(from, `_Kesalahan sedang mengganti metode download..._`, id)
+                    try {
+                        const { title, UrlVideo, UrlMp3, imgUrl } = await jsonre
+                        const captions = `*Data Berhasil Didapatkan!*\n\n*Title* : ${title}\n*Ext* : MP3\n\n_Silahkan tunggu file media sedang dikirim mungkin butuh beberapa menit_`
+                        client.sendFileFromUrl(from, imgUrl, `thumb.jpg`, captions, id)
+                        await client.sendFileFromUrl(from, UrlVideo, `${title}.mp3`, '', id).catch(() => client.reply(from, mess.error.Yt4, id))
+                    } catch (err){
+                        console.log(err)
+                    }
                 } else {
+                    if (Number(barbarytp4.filesize.split(' MB')[0]) > 40.00) return client.reply(from, '_Mohon maaf sepertinya durasi video telah melebihi batas._', id)
                     const { title, ext, thumb, filesize, resolution, result } = await barbarytp4
                     //const { title, UrlVideo, UrlMp3, imgUrl } = await jsonre
                     //try {
@@ -296,16 +308,41 @@ module.exports = msgHandler = async (client, message) => {
                 console.log(err)
             }
             break         
-        /*case '#wiki':
-            if (args.length === 1) return client.reply(from, 'Kirim perintah *#wiki [query]*\nContoh : *#wiki asu*', id)
-            const query_ = body.slice(6)
-            const wiki = await get.get('https://mhankbarbar.herokuapp.com/api/wiki?q='+ query_).json()
-            if (wiki.error) {
-                client.reply(from, wiki.error, id)
+        case '#translate':
+            if (!isGroupMsg) return client.reply(from, 'Bot sekarang hanya bisa digunakan digrup saja! untuk dimasukan ke grup bot ini sifatnya berbayar, konfirmasi ke owner bot wa.me/6289673766582 untuk pertanyaan lebih lanjut', id)
+            if (args.length === 1) return client.reply(from, `Penggunaan untuk translate teks\n\nPenggunaan 1 : *#translate [data bahasa] [teks yang akan ditranslate]* _(tanpa tag)_\nPenggunaan 2 : *#translate [data bahasa]* _(dengan tag)_\n\nContoh 1 : *#translate id hello how are you* _(tanpa tag)_\nContoh 2 : *#translate id* _(tag pesan yang akan ditranslate)_`, id)
+            //if (!quotedMsg) return client.reply(from, 'Tag pesan yang akan ditranslate!', id)
+            if (quotedMsg) {
+                const dataTextReal = quotedMsg.type == 'chat' ? quotedMsg.body : quotedMsg.type == 'image' ? quotedMsg.caption : ''
+                const lang = args[1].toString()
+                    const trans = async (dataText, lang) => {
+                    console.log(`Translate text to ${lang}...`)
+                    const result = await translate(dataTextReal, {
+                        to: lang
+                        })
+                      .then((res) => client.reply(from, res.text, id))
+                      .catch((err) => client.reply(from, `Sepertinya tidak ada data bahasa ${lang}\n\n${bahasa_list}`, id))
+                    // console.log(result.data[0])
+                }
+                trans(dataTextReal, lang) 
+            } else if (args.length >= 2) {
+                // !translate id 
+                const dataTextManu = body.slice(13)
+                const lang = args[1].toString()
+                    const trans = async (dataText, lang) => {
+                    console.log(`Translate text to ${lang}...`)
+                    const result = await translate(dataTextManu, {
+                        to: lang
+                        })
+                      .then((res) => client.reply(from, res.text, id))
+                      .catch((err) => client.reply(from, `Sepertinya tidak ada data bahasa ${lang}\n\n${tts_list}`, id))
+                    // console.log(result.data[0])
+                }
+                trans(dataTextManu, lang)
             } else {
-                client.reply(from, `➸ *Query* : ${query_}\n\n➸ *Result* : ${wiki.result}`, id)
+                client.reply(from, `Kesalahan mentranslate`, id)
             }
-            break*/
+            break
         case '#cuaca':
             if (args.length === 1) return client.reply(from, 'Kirim perintah *#cuaca [tempat]*\nContoh : *#cuaca tangerang', id)
             const tempat = body.slice(7)
@@ -380,9 +417,43 @@ module.exports = msgHandler = async (client, message) => {
         case '#family100':
             if (!isGroupMsg) return client.reply(from, 'Bot sekarang hanya bisa digunakan digrup saja! untuk dimasukan ke grup bot ini sifatnya berbayar, konfirmasi ke owner bot wa.me/6289673766582 untuk pertanyaan lebih lanjut', id)
             const family = await get.get('https://api.vhtear.com/family100&apikey=botnolepbydandyproject').json()
-            const seratus = `*FAMILY 100*\n\n*Pertanyaan* : ${family.result.soal}\n*Jawaban* : ${family.result.jawaban}`
-            client.reply(from, seratus, id)            
-            break                   
+            client.reply(from, `*FAMILY 100*\n\n*Pertanyaan* : ${family.result.soal}\n\n_Waktu : 30 Detik..._`, id)
+            await sleep(10000)
+            client.sendText(from, `_Sisa Waktu : 20 Detik_`)
+            await sleep(10000)
+            client.sendText(from, `_Sisa Waktu : 10 Detik_`)
+            await sleep(10000)
+            client.sendText(from, `_Waktu Habis..._`, id)
+            await sleep(1000)
+            client.reply(from, `*Jawaban* : ${family.result.jawaban}`, id)            
+            break
+        case '#caklontong':
+            if (!isGroupMsg) return client.reply(from, 'Bot sekarang hanya bisa digunakan digrup saja! untuk dimasukan ke grup bot ini sifatnya berbayar, konfirmasi ke owner bot wa.me/6289673766582 untuk pertanyaan lebih lanjut', id)
+            const cakl = await get.get('https://api.vhtear.com/funkuis&apikey=botnolepbydandyproject').json()
+            client.reply(from,`*TTS CAK LONTONG*\n\n*Pertanyaan* : ${cakl.result.soal} \n\n_Waktu : 30 Detik..._`, id)
+            await sleep(10000)
+            client.sendText(from, `_Sisa Waktu : 20 Detik_`)
+            await sleep(10000)
+            client.sendText(from, `_Sisa Waktu : 10 Detik_`)
+            await sleep(10000)
+            client.sendText(from, `_Waktu Habis..._`, id)
+            await sleep(1000)
+            client.reply(from, cakl.result.desk, id) 
+            break 
+        case '#tebakgambar':
+            if (!isGroupMsg) return client.reply(from, 'Bot sekarang hanya bisa digunakan digrup saja! untuk dimasukan ke grup bot ini sifatnya berbayar, konfirmasi ke owner bot wa.me/6289673766582 untuk pertanyaan lebih lanjut', id)            
+            const teabaks = await get.get('https://api.vhtear.com/tebakgambar&apikey=botnolepbydandyproject').json()                      
+            const { soalImg, jawaban } = teabaks.result           
+            await client.sendFileFromUrl(from, soalImg, 'soal.jpg',`*TEBAK GAMBAR*\n\n_Waktu : 30 Detik..._`, id) 
+            await sleep(10000)
+            client.sendText(from, `_Sisa Waktu : 20 Detik_`)
+            await sleep(10000)
+            client.sendText(from, `_Sisa Waktu : 10 Detik_`)
+            await sleep(10000)
+            client.sendText(from, `_Waktu Habis..._`, id)
+            await sleep(1000)
+            client.reply(from, `*Jawaban* : ${teabaks.result.jawaban}`, id)      
+            break
        /* case '!nsfw':
             if (!isGroupMsg) return client.reply(from, 'Perintah ini hanya bisa di gunakan dalam group!', id)
             if (!isGroupAdmins) return client.reply(from, 'Perintah ini hanya bisa di gunakan oleh Admin group!', id)
@@ -736,6 +807,7 @@ module.exports = msgHandler = async (client, message) => {
             client.deleteMessage(quotedMsgObj.chatId, quotedMsgObj.id, false)
             break
         case '#getses':
+            if (!isOwner) return client.reply(from, 'Perintah ini hanya untuk Owner bot!', id)        
             const sesPic = await client.getSnapshot()
             client.sendFile(from, sesPic, 'session.png', 'Neh...', id)
             break
@@ -796,6 +868,9 @@ module.exports = msgHandler = async (client, message) => {
             const jadwalNow = await get.get('https://api.haipbis.xyz/jadwaltvnow').json()
             client.reply(from, `Jam : ${jadwalNow.jam}\n\nJadwalTV : ${jadwalNow.jadwalTV}`, id)
             break
+        case '#sendowner':
+            client.sendContact(from, '6289673766582@c.us' ,isLordzOwner)
+            break            
         /*case '!loli':
             const loli = await get.get('https://mhankbarbar.herokuapp.com/api/randomloli').json()
             client.sendFileFromUrl(from, loli.result, 'loli.jpeg', 'Lolinya om', id)
@@ -907,16 +982,30 @@ module.exports = msgHandler = async (client, message) => {
             // const captiions = `Menampilkan hasil ss ${urlweb} dengan dimensi ${dimensi}`
             
             }
-            break          
+            break 
+        /*case '#memecustom':
+           if (args.length === 1) return client.reply(from, 'Kirim perintah *#nulis [teks]*', id)
+            args = body.trim().split('.')
+            if (arg.length >= 4){ 
+                const temanya = args[1]
+                const tekss1 = args[2]
+                const tekss2= args[3]
+            let mememak =  `https://api.memegen.link/images/${temanya}/${tekss1}/${tekss2}.png`
+            await fetch(mememak, {method: "GET"})
+            .then(res => res.json())
+            .then(async (json) => {
+                await client.sendFileFromUrl(from, json.result, 'memek.jpg', 'nehh..', id)
+            }).catch(e => client.reply(from, "Error: "+ e));
+        }
+            break */     
         case '#quote':
         case '#quotes':
             const quotes = await get.get('https://mhankbarbar.herokuapp.com/api/randomquotes').json()
             client.reply(from, `➸ *Quotes* : ${quotes.quotes}\n➸ *Author* : ${quotes.author}`, id)
             break
         case '#quotesnime':
-            const skya = await get.get('https://mhankbarbar.herokuapp.com/api/quotesnime/random').json()
-            skya_ = skya.data
-            client.reply(from, `➸ *Quotes* : ${skya_.quote}\n➸ *Character* : ${skya_.character}\n➸ *Anime* : ${skya_.anime}`, id)
+            const skya = await get.get('https://api.haipbis.xyz/randomanimequotes').json()
+            client.reply(from, `➸ *Quotes* : ${skya.quotes}\n➸ *Author* : ${skya.author}\n➸ *Anime* : ${skya.anime}`, id)
             break
         case '#meme':
             const response = await axios.get('https://meme-api.herokuapp.com/gimme/wholesomeanimemes');

@@ -41,7 +41,7 @@ const start = async (client = new Client()) => {
             // } else {
             //     client.sendText(chat.groupMetadata.id, `Halo warga grup *${chat.contact.name}* terimakasih sudah menginvite bot ini, untuk melihat menu silahkan kirim *!menu*`)
             // } 
-            client.sendText(chat.id, `Berhubungan Server terbatas bot ini hanya untuk grup Private!\n\nJika ada pihak yang membutuhkan bot ini untuk digrup donasi MIN 10(tanpa request) ke 083159125945 (OVO) dan konfirmasi owner bot wa.me/6289673766582\n\nterima kasih.`).then(() => client.leaveGroup(chat.id)).then(() => client.deleteChat(chat.id))
+            client.sendText(chat.id, `Berhubungan Server terbatas bot ini hanya untuk grup Private!\n\nJika ada pihak yang membutuhkan bot ini untuk digrup donasi MIN 10k(tanpa request) ke 083159125945 (OVO) dan konfirmasi owner bot wa.me/6289673766582\n\nterima kasih.`).then(() => client.leaveGroup(chat.id)).then(() => client.deleteChat(chat.id))
         }))
 
         /*client.onAck((x => {
