@@ -1,13 +1,13 @@
 {
-  "name": "whatsapp-bot",
+  "name": "lordz-bot",
   "version": "2.0.0",
-  "description": "Halo sesama pengguna, <b>whatsapp-bot</b> adalah skrip otomatisasi whatsapp atau lebih seperti bot yang merespons kata kunci tertentu dan beberapa fitur lain yang sedang kami kerjakan.",
+  "description": "Halo sesama pengguna, <b>Lordz-bot</b> adalah skrip otomatisasi whatsapp atau lebih seperti bot yang merespons kata kunci tertentu dan beberapa fitur lain yang sedang kami kerjakan.",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "Mhank BarBar",
+  "author": "ijmalan",
   "license": "Apache-2.0",
   "dependencies": {
     "@open-wa/wa-automate": "^2.0.28",
@@ -40,13 +40,13 @@
   "devDependencies": {},
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/mhankbarbar/whatsapp-bot.git"
+    "url": "git+https://github.com/ijmalan/lordz-bot.git"
   },
   "keywords": [
-    "Whatsapp-Bot"
+    "lordz-bo"
   ],
   "bugs": {
-    "url": "https://github.com/mhankbarbar/whatsapp-bot/issues"
+    "url": "https://github.com/ijmalan/lordz-bot/issues"
   },
-  "homepage": "https://github.com/mhankbarbar/whatsapp-bot#readme"
+  "homepage": "https://github.com/ijmalan/lordz-bot"
 }
