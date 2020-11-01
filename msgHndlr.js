@@ -18,6 +18,8 @@ const nsfw_ = JSON.parse(fs.readFileSync('./lib/NSFW.json'))
 const welkom = JSON.parse(fs.readFileSync('./lib/welcome.json'))
 const { RemoveBgResult, removeBackgroundFromImageBase64, removeBackgroundFromImageFile } = require('remove.bg')
 const { BikinTikel } = require('./lib/bikin_tikel')
+const { customs } = require('./lib/mememaker')
+const { uploadImages } = require('./lib/fetcher')
 const translate = require('@vitalets/google-translate-api');
 
 moment.tz.setDefault('Asia/Jakarta').locale('id')
@@ -32,7 +34,7 @@ module.exports = msgHandler = async (client, message) => {
         const commands = caption || body || ''
         const command = commands.toLowerCase().split(' ')[0] || ''
         const args =  commands.split(' ')
-
+        const isQuotedImage = quotedMsg && quotedMsg.type === 'image'
         const msgs = (message) => {
             if (command.startsWith('#')) {
                 if (message.length >= 10){
@@ -106,6 +108,33 @@ module.exports = msgHandler = async (client, message) => {
         if (!isMuted(chat.id) == true) return console.log(`Muted ${chat.id} ${name}`)
 
         switch(command) {
+        case '#memecustom':
+            arg = body.trim().split('.')
+            if ((isMedia || isQuotedImage) && arg.length >= 3) {
+                const top = arg[1]
+                const bottom = arg[2]
+                const encryptMedia = isQuotedImage ? quotedMsg : message
+                const mediaData = await decryptMedia(encryptMedia, uaOverride)
+                const getUrl = await uploadImages(mediaData, false)
+                const ImageBase64 = await customs(getUrl, top, bottom)
+                client.sendFile(from, ImageBase64, 'image.png', '', null, true)
+                    .then((serialized) => console.log(`Done`))
+                    .catch((err) => console.error(err))
+            } else {
+                await client.reply(from, 'Tidak ada gambar! ', id)
+            }
+            break            
+        case '#simi' :
+            if (!isGroupMsg) return client.reply(from, 'Bot sekarang hanya bisa digunakan digrup saja! untuk dimasukan ke grup bot ini sifatnya berbayar, konfirmasi ke owner bot wa.me/6289673766582 untuk pertanyaan lebih lanjut', id)            
+            const simi = body.slice(7)
+            const sim = await get.get( 'https://api.i-tech.id/tools/simi?key=ZEL5ZL-Wm5Psl-66gG9x-W3FHEa-97bm8g&kata='+simi).json()
+            client.reply(from, sim.result, id)
+            break
+        case '#timeline':
+            if (!isGroupMsg) return client.reply(from, 'Bot sekarang hanya bisa digunakan digrup saja! untuk dimasukan ke grup bot ini sifatnya berbayar, konfirmasi ke owner bot wa.me/6289673766582 untuk pertanyaan lebih lanjut', id)            
+            const taimlen = await get.get('https://api.i-tech.id/tools/gambar?key=ZEL5ZL-Wm5Psl-66gG9x-W3FHEa-97bm8g').json()                                 
+            await client.sendFileFromUrl(from, taimlen.result , 'temlen.jpg',`_Timeline buat ${pushname}.._`, id)
+            break
         case '#unmute':
             console.log(`Unmuted ${name}!`)
             break
