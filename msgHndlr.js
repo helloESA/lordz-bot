@@ -7,8 +7,8 @@ const moment = require('moment-timezone')
 const get = require('got')
 const color = require('./lib/color')
 const { spawn, exec } = require('child_process')
-let muted = JSON.parse(fs.readFileSync('./lib/muted.json'))
-let vip = JSON.parse(fs.readFileSync('./lib/vip.json'))
+const muted = JSON.parse(fs.readFileSync('./lib/muted.json'))
+const vip = JSON.parse(fs.readFileSync('./lib/vip.json'))
 /*const nhentai = require('nhentai-js')
 const { API } = require('nhentai-api')*/
 const { liriklagu, quotemaker, tulis, ig, fb, twt, sleep, jadwalTv, ss } = require('./lib/functions')
@@ -21,6 +21,11 @@ const { BikinTikel } = require('./lib/bikin_tikel')
 const { customs } = require('./lib/mememaker')
 const { uploadImages } = require('./lib/fetcher')
 const translate = require('@vitalets/google-translate-api');
+const setting = JSON.parse(fs.readFileSync('./lib/config.json'))
+const banned = JSON.parse(fs.readFileSync('./lib/banned.json'));
+const limit = JSON.parse(fs.readFileSync('./lib/limit.json'));
+const msgLimit = JSON.parse(fs.readFileSync('./lib/msgLimit.json'));
+const {prefix, banChats, restartState: isRestart,mtc: mtcState, whitelist ,sAdmin, limitCount, memberLimit, groupLimit} = setting
 
 moment.tz.setDefault('Asia/Jakarta').locale('id')
 
@@ -62,6 +67,8 @@ module.exports = msgHandler = async (client, message) => {
         const time = moment(t * 1000).format('DD/MM HH:mm:ss')
         const botNumber = await client.getHostNumber()
         const blockNumber = await client.getBlockedIds()
+        const serial = sender.id
+        const isSadmin = serial === sAdmin
         const groupId = isGroupMsg ? chat.groupMetadata.id : ''
         const groupAdmins = isGroupMsg ? await client.getGroupAdmins(groupId) : ''
         const isGroupAdmins = isGroupMsg ? groupAdmins.includes(sender.id) : false
@@ -96,6 +103,119 @@ module.exports = msgHandler = async (client, message) => {
             }
         }
 
+        function restartAwal(client){
+            setting.restartState = false
+            isRestart = false
+            client.sendText(setting.restartId, 'Restart Succesfull!')
+            setting.restartId = 'undefined'
+            fs.writeFileSync('./lib/setting.json', JSON.stringify(setting, null,2));
+        }
+
+        //BEGIN HELPER
+
+
+        if (typeof Array.prototype.splice === 'undefined') {
+            Array.prototype.splice = function (index, howmany, elemes) {
+                howmany = typeof howmany === 'undefined' || this.length;
+                var elems = Array.prototype.slice.call(arguments, 2), newArr = this.slice(0, index), last = this.slice(index + howmany);
+                newArr = newArr.concat.apply(newArr, elems);
+                newArr = newArr.concat.apply(newArr, last);
+                return newArr;
+            }
+        }
+
+        function isMsgLimit(id){
+            if (isSadmin) {return false;}
+            let found = false;
+            const addmsg = JSON.parse(fs.readFileSync('./lib/msgLimit.json'))
+            for (let i of addmsg){
+                if(i.id === id){
+                    if (i.msg >= 12) {
+                        found === true 
+                        console.log(i)
+                        client.reply(from, '*[ANTI-SPAM]*\nMaaf, akun anda kami blok karena SPAM, dan tidak bisa di UNBLOK!', id)
+                        client.contactBlock(id)
+                        banned.push(id)
+                        fs.writeFileSync('./lib/banned.json', JSON.stringify(banned))
+                        return true;
+                    }else if(i.msg >= 7){
+                        found === true
+                        client.reply(from, '*[ANTI-SPAM]*\nNomor anda terdeteksi spam!\nMohon tidak spam 5 pesan lagi atau nomor anda AUTO BLOK!', id)
+                        return true
+                    }else{
+                        found === true
+                        return false;
+                    }   
+                }
+            }
+            if (found === false){
+                let obj = {id: `${id}`, msg:1};
+                addmsg.push(obj);
+                fs.writeFileSync('./lib/msgLimit.json',JSON.stringify(addmsg));
+                return false;
+            }  
+        }
+
+        function addMsgLimit(id){
+            if (isSadmin) {return;}
+            var found = false
+            const addmsg = JSON.parse(fs.readFileSync('./lib/msgLimit.json'))
+            Object.keys(addmsg).forEach((i) => {
+                if(addmsg[i].id == id){
+                    found = i
+                    console.log(addmsg[0])
+                }
+            })
+            if (found !== false) {
+                addmsg[found].msg += 1;
+                fs.writeFileSync('./lib/msgLimit.json',JSON.stringify(addmsg));
+                console.log(addmsg[0])
+            }
+        }
+
+        function isLimit(id){
+            if (isSadmin) {return false;}
+            let found = false;
+            for (let i of limit){
+                if(i.id === id){
+                    let limits = i.limit;
+                    if (limits >= limitCount) {
+                        found = true;
+                        console.log(`Limit Abis : ${serial}`)
+                        return true;
+                    }else{
+                        limit
+                        found = true;
+                        return false;
+                    }
+                    }
+            }
+            if (found === false){
+                let obj = {id: `${id}`, limit:1};
+                limit.push(obj);
+                fs.writeFileSync('./lib/limit.json',JSON.stringify(limit));
+                return false;
+            }  
+        }
+
+        function limitAdd (id) {
+            if (isSadmin) {return;}
+            var found = false;
+            const limidat = JSON.parse(fs.readFileSync('./lib/limit.json'))
+            Object.keys(limidat).forEach((i) => {
+                if(limidat[i].id == id){
+                    found = i
+                    console.log(limidat[i])
+                }
+            })
+            if (found !== false) {
+                limidat[found].limit += 1;
+                console.log(limidat[found])
+                fs.writeFileSync('./lib/limit.json',JSON.stringify(limidat));
+            }
+        }
+        //END HELPER        
+
         if (body === '#unmute') {
             if(isGroupMsg) {
                 if (!isGroupAdmins) return client.reply(from, 'Maaf, perintah ini hanya dapat dilakukan oleh admin grup!', id)
@@ -108,7 +228,57 @@ module.exports = msgHandler = async (client, message) => {
         if (!isMuted(chat.id) == true) return console.log(`Muted ${chat.id} ${name}`)
 
         switch(command) {
+        case '#limit':
+            var found = false
+            const limidat = JSON.parse(fs.readFileSync('./lib/limit.json'))
+            for(let lmt of limidat){
+                if(lmt.id === serial){
+                    let limitCounts = limitCount-lmt.limit
+                    if(limitCounts <= 0) return client.reply(from, `Limit request anda sudah habis\n\n_Note : Limit akan direset setiap jam 21:00!_`, id)
+                    client.reply(from, `Sisa limit request anda tersisa : *${limitCounts}*\n\n_Note : Limit akan direset setiap jam 21:00!_`, id)
+                    found = true
+                }
+            }
+            console.log(limit)
+            console.log(limidat)
+            if (found === false){
+                let obj = {id: `${serial}`, limit:1};
+                limit.push(obj);
+                fs.writeFileSync('./lib/limit.json',JSON.stringify(limit, 1));
+                client.reply(from, `Sisa limit request anda tersisa : *${limitCount}*\n\n_Note : Limit akan direset setiap jam 21:00!_`, id)
+            }
+            break
+        case '#cobalimit':
+            if(isMsgLimit(serial)){
+                    return
+                }else{
+                    await addMsgLimit(serial)
+            }
+            await limitAdd(serial)
+            break            
+        case '#restartlimit':
+        case '#restart':
+        case '#reset':
+            if (!isOwner) return client.reply(from, `_Hanya Owner Bot Yang Bisa Mereset Limit!_`, id)
+            client.reply(from, '⚠️ *[INFO]* Reseting ...', id)
+            setting.restartState = true
+            setting.restartId = chat.id
+            fs.writeFileSync('./lib/setting.json', JSON.stringify(setting, null, 2));
+            fs.writeFileSync('./lib/limit.json', JSON.stringify(limit));
+            //fs.writeFileSync('./lib/muted.json', JSON.stringify(muted, null,2));
+            fs.writeFileSync('./lib/msgLimit.json', JSON.stringify(msgLimit));
+            //fs.writeFileSync('./lib/banned.json', JSON.stringify(banned));
+            await sleep(5000).then(() => client.reply(from, `✅ _Reset limit Completed!_`, id))
+
+            break            
         case '#memecustom':
+            if (isLimit(serial)) return client.reply(from, `_Hai ${pushname} Limit request anda sudah mencapai batas, Akan direset kembali setiap jam 9 dan gunakan seperlunya!_`, id)
+            if(isMsgLimit(serial)){
+                    return
+                }else{
+                    await addMsgLimit(serial)
+            }
+            await limitAdd(serial)             
             arg = body.trim().split('.')
             if ((isMedia || isQuotedImage) && arg.length >= 3) {
                 const top = arg[1]
@@ -121,7 +291,7 @@ module.exports = msgHandler = async (client, message) => {
                     .then((serialized) => console.log(`Done`))
                     .catch((err) => console.error(err))
             } else {
-                await client.reply(from, 'Tidak ada gambar! ', id)
+                await client.reply(from, 'Tag Gambar! ', id)
             }
             break            
         case '#simi' :
@@ -132,6 +302,13 @@ module.exports = msgHandler = async (client, message) => {
             break
         case '#timeline':
             if (!isGroupMsg) return client.reply(from, 'Bot sekarang hanya bisa digunakan digrup saja! untuk dimasukan ke grup bot ini sifatnya berbayar, konfirmasi ke owner bot wa.me/6289673766582 untuk pertanyaan lebih lanjut', id)            
+            if (isLimit(serial)) return client.reply(from, `_Hai ${pushname} Limit request anda sudah mencapai batas, Akan direset kembali setiap jam 9 dan gunakan seperlunya!_`, id)
+            if(isMsgLimit(serial)){
+                    return
+                }else{
+                    await addMsgLimit(serial)
+            }
+            await limitAdd(serial)            
             const taimlen = await get.get('https://api.i-tech.id/tools/gambar?key=ZEL5ZL-Wm5Psl-66gG9x-W3FHEa-97bm8g').json()                                 
             await client.sendFileFromUrl(from, taimlen.result , 'temlen.jpg',`_Timeline buat ${pushname}.._`, id)
             break
@@ -147,6 +324,13 @@ module.exports = msgHandler = async (client, message) => {
         case '#stikernobg':
         case '#stickernobg':
            // if (args.length === 1 && !isMedia || args.length === 1 && !quotedMsg) return client.reply(from, `Kirim foto dengan caption *!stickernobg*`, id)
+            if (isLimit(serial)) return client.reply(from, `_Hai ${pushname} Limit request anda sudah mencapai batas, Akan direset kembali setiap jam 9 dan gunakan seperlunya!_`, id)
+            if(isMsgLimit(serial)){
+                    return
+                }else{
+                    await addMsgLimit(serial)
+            }
+            await limitAdd(serial)            
             if (isMedia && type === 'image') {
               try {
                 var mediaData = await decryptMedia(message, uaOverride)
@@ -169,6 +353,13 @@ module.exports = msgHandler = async (client, message) => {
             break            
         case '#sticker':
         case '#stiker':
+            if (isLimit(serial)) return client.reply(from, `_Hai ${pushname} Limit request anda sudah mencapai batas, Akan direset kembali setiap jam 9 dan gunakan seperlunya!_`, id)
+            if(isMsgLimit(serial)){
+                    return
+                }else{
+                    await addMsgLimit(serial)
+            }
+            await limitAdd(serial)            
             if (isMedia && type === 'image') {
                 const mediaData = await decryptMedia(message, uaOverride)
                 const imageBase64 = `data:${mimetype};base64,${mediaData.toString('base64')}`
@@ -192,6 +383,13 @@ module.exports = msgHandler = async (client, message) => {
         case '#stimage':
         case '#sti':
             if (args.length === 2) return client.reply(from, `Hai ${pushname} untuk menggunakan fitur sticker to image, mohon tag stiker! dan kirim pesan *#ttimage*`, id)
+            if (isLimit(serial)) return client.reply(from, `_Hai ${pushname} Limit request anda sudah mencapai batas, Akan direset kembali setiap jam 9 dan gunakan seperlunya!_`, id)
+            if(isMsgLimit(serial)){
+                    return
+                }else{
+                    await addMsgLimit(serial)
+            }
+            await limitAdd(serial)
             if (quotedMsg) {
                 client.reply(from, '_Mohon tunggu sedang mengkonversi stiker..._', id)
                 if( quotedMsg.type === 'sticker') {
@@ -240,6 +438,13 @@ module.exports = msgHandler = async (client, message) => {
         case '#stickergif':
         case '#stikergif':
         case '#sgif':
+            if (isLimit(serial)) return client.reply(from, `_Hai ${pushname} Limit request anda sudah mencapai batas, Akan direset kembali setiap jam 9 dan gunakan seperlunya!_`, id)
+            if(isMsgLimit(serial)){
+                    return
+                }else{
+                    await addMsgLimit(serial)
+            }
+            await limitAdd(serial)
             if (isMedia) {
                 if (mimetype === 'video/mp4' && message.duration < 10 || mimetype === 'image/gif' && message.duration < 10) {
                     const mediaData = await decryptMedia(message, uaOverride)
@@ -261,6 +466,13 @@ module.exports = msgHandler = async (client, message) => {
             break
         case '#tts':
         if (!isGroupMsg) return client.reply(from, 'Bot sekarang hanya bisa digunakan digrup saja! untuk dimasukan ke grup bot ini sifatnya berbayar, konfirmasi ke owner bot wa.me/6285559038021 untuk pertanyaan lebih lanjut', id)
+            if (isLimit(serial)) return client.reply(from, `_Hai ${pushname} Limit request anda sudah mencapai batas, Akan direset kembali setiap jam 9 dan gunakan seperlunya!_`, id)
+            if(isMsgLimit(serial)){
+                    return
+                }else{
+                    await addMsgLimit(serial)
+            }
+            await limitAdd(serial)
             try {
                 if (args.length === 1) return client.reply(from, 'Kirim perintah *#tts [code_bahasa] [teks]*, contoh *#tts id halo semua*')
                 var dataBhs = args[1]      
@@ -278,6 +490,13 @@ module.exports = msgHandler = async (client, message) => {
             }
             break
         case '#nulis':
+            if (isLimit(serial)) return client.reply(from, `_Hai ${pushname} Limit request anda sudah mencapai batas, Akan direset kembali setiap jam 9 dan gunakan seperlunya!_`, id)
+            if(isMsgLimit(serial)){
+                    return
+                }else{
+                    await addMsgLimit(serial)
+            }
+            await limitAdd(serial)
             if (args.length === 1) return client.reply(from, 'Kirim perintah *#nulis [teks]*', id)
             const nulis = encodeURIComponent(body.slice(7))
             client.reply(from, `_Bot lagi menulis ni ${pushname}..._`, id)
@@ -290,6 +509,13 @@ module.exports = msgHandler = async (client, message) => {
             break           
         case '#ytmp3':
             if (!isGroupMsg) return client.reply(from, 'Bot sekarang hanya bisa digunakan digrup saja! untuk dimasukan ke grup bot ini sifatnya berbayar, konfirmasi ke owner bot wa.me/6289673766582 untuk pertanyaan lebih lanjut', id)
+            if (isLimit(serial)) return client.reply(from, `_Hai ${pushname} Limit request anda sudah mencapai batas, Akan direset kembali setiap jam 9 dan gunakan seperlunya!_`, id)
+            if(isMsgLimit(serial)){
+                    return
+                }else{
+                    await addMsgLimit(serial)
+            }
+            await limitAdd(serial)
             if (args.length === 1) return client.reply(from, 'Kirim perintah *#ytmp3 [linkYt]*, untuk contoh silahkan kirim perintah *#readme*')
             let isLinksss = args[1].match(/(?:https?:\/{2})?(?:w{3}\.)?youtu(?:be)?\.(?:com|be)(?:\/watch\?v=|\/)([^\s&]+)/)
             if (!isLinksss) return client.reply(from, mess.error.Iv, id)
@@ -312,6 +538,13 @@ module.exports = msgHandler = async (client, message) => {
             break   
         case '#ytmp4':
             if (!isGroupMsg) return client.reply(from, 'Bot sekarang hanya bisa digunakan digrup saja! untuk dimasukan ke grup bot ini sifatnya berbayar, konfirmasi ke owner bot wa.me/6289673766582 untuk pertanyaan lebih lanjut', id)
+            if (isLimit(serial)) return client.reply(from, `_Hai ${pushname} Limit request anda sudah mencapai batas, Akan direset kembali setiap jam 9 dan gunakan seperlunya!_`, id)
+            if(isMsgLimit(serial)){
+                    return
+                }else{
+                    await addMsgLimit(serial)
+            }
+            await limitAdd(serial)
             if (args.length === 1) return client.reply(from, 'Kirim perintah *#ytmp4* _linkYt_, untuk contoh silahkan kirim perintah *#readme*', id)
             let isLinks2 = args[1].match(/(?:https?:\/{2})?(?:w{3}\.)?youtu(?:be)?\.(?:com|be)(?:\/watch\?v=|\/)([^\s&]+)/)
             if (!isLinks2) return client.reply(from, mess.error.Iv, id)
@@ -332,6 +565,13 @@ module.exports = msgHandler = async (client, message) => {
             break       
             case '#nyanyi':
             if (!isGroupMsg) return client.reply(from, 'Bot sekarang hanya bisa digunakan digrup saja! untuk dimasukan ke grup bot ini sifatnya berbayar, konfirmasi ke owner bot wa.me/6289673766582 untuk pertanyaan lebih lanjut', id)
+            if (isLimit(serial)) return client.reply(from, `_Hai ${pushname} Limit request anda sudah mencapai batas, Akan direset kembali setiap jam 9 dan gunakan seperlunya!_`, id)
+            if(isMsgLimit(serial)){
+                    return
+                }else{
+                    await addMsgLimit(serial)
+            }
+            await limitAdd(serial)
             if (args.length === 1) return client.reply(from, 'Kirim perintah *#nyanyi _Lagunya_*, untuk contoh silahkan kirim perintah *#readme*')
             const quernyanyi = body.slice(8)
             try {
@@ -367,6 +607,13 @@ module.exports = msgHandler = async (client, message) => {
             break        
         case '#translate':
             if (!isGroupMsg) return client.reply(from, 'Bot sekarang hanya bisa digunakan digrup saja! untuk dimasukan ke grup bot ini sifatnya berbayar, konfirmasi ke owner bot wa.me/6289673766582 untuk pertanyaan lebih lanjut', id)
+            if (isLimit(serial)) return client.reply(from, `_Hai ${pushname} Limit request anda sudah mencapai batas, Akan direset kembali setiap jam 9 dan gunakan seperlunya!_`, id)
+            if(isMsgLimit(serial)){
+                    return
+                }else{
+                    await addMsgLimit(serial)
+            }
+            await limitAdd(serial)
             if (args.length === 1) return client.reply(from, `Penggunaan untuk translate teks\n\nPenggunaan 1 : *#translate [data bahasa] [teks yang akan ditranslate]* _(tanpa tag)_\nPenggunaan 2 : *#translate [data bahasa]* _(dengan tag)_\n\nContoh 1 : *#translate id hello how are you* _(tanpa tag)_\nContoh 2 : *#translate id* _(tag pesan yang akan ditranslate)_`, id)
             //if (!quotedMsg) return client.reply(from, 'Tag pesan yang akan ditranslate!', id)
             if (quotedMsg) {
@@ -401,6 +648,13 @@ module.exports = msgHandler = async (client, message) => {
             }
             break
         case '#cuaca':
+            if (isLimit(serial)) return client.reply(from, `_Hai ${pushname} Limit request anda sudah mencapai batas, Akan direset kembali setiap jam 9 dan gunakan seperlunya!_`, id)
+            if(isMsgLimit(serial)){
+                    return
+                }else{
+                    await addMsgLimit(serial)
+            }
+            await limitAdd(serial)
             if (args.length === 1) return client.reply(from, 'Kirim perintah *#cuaca [tempat]*\nContoh : *#cuaca tangerang', id)
             const tempat = body.slice(7)
             client.reply(`_Sedang mencari data Cuaca ${tempat}...._`)
@@ -413,6 +667,13 @@ module.exports = msgHandler = async (client, message) => {
             break
         case '#fb':
         if (!isGroupMsg) return client.reply(from, 'Bot sekarang hanya bisa digunakan digrup saja! untuk dimasukan ke grup bot ini sifatnya berbayar, konfirmasi ke owner bot wa.me/6289673766582 untuk pertanyaan lebih lanjut', id)        
+            if (isLimit(serial)) return client.reply(from, `_Hai ${pushname} Limit request anda sudah mencapai batas, Akan direset kembali setiap jam 9 dan gunakan seperlunya!_`, id)
+            if(isMsgLimit(serial)){
+                    return
+                }else{
+                    await addMsgLimit(serial)
+            }
+            await limitAdd(serial)
             try {
                 if (args.length === 1) return client.reply(from, 'Kirim perintah *#fb [linkFb]* untuk contoh silahkan kirim perintah *#readme*', id)
                 if (!args[1].includes('facebook.com')) return client.reply(from, mess.error.Iv, id)
@@ -426,6 +687,13 @@ module.exports = msgHandler = async (client, message) => {
             break
         case '#twt':
         if (!isGroupMsg) return client.reply(from, 'Bot sekarang hanya bisa digunakan digrup saja! untuk dimasukan ke grup bot ini sifatnya berbayar, konfirmasi ke owner bot wa.me/6289673766582 untuk pertanyaan lebih lanjut', id)
+            if (isLimit(serial)) return client.reply(from, `_Hai ${pushname} Limit request anda sudah mencapai batas, Akan direset kembali setiap jam 9 dan gunakan seperlunya!_`, id)
+            if(isMsgLimit(serial)){
+                    return
+                }else{
+                    await addMsgLimit(serial)
+            }
+            await limitAdd(serial)
             try {
                 if (args.length === 1) return client.reply(from, 'Kirim perintah *#twt* _linkVideoTwitter_ untuk contoh silahkan kirim perintah *#readme*', id)
                 if (!args[1].includes('twitter.com')) return client.reply(from, mess.error.Iv, id)
@@ -441,6 +709,13 @@ module.exports = msgHandler = async (client, message) => {
             break 
         case '#wiki':
             if (!isGroupMsg) return client.reply(from, 'Bot sekarang hanya bisa digunakan digrup saja! untuk dimasukan ke grup bot ini sifatnya berbayar, konfirmasi ke owner bot wa.me/62896737665821 untuk pertanyaan lebih lanjut', id)
+            if (isLimit(serial)) return client.reply(from, `_Hai ${pushname} Limit request anda sudah mencapai batas, Akan direset kembali setiap jam 9 dan gunakan seperlunya!_`, id)
+            if(isMsgLimit(serial)){
+                    return
+                }else{
+                    await addMsgLimit(serial)
+            }
+            await limitAdd(serial)
             if (args.length === 1) return client.reply(from, 'Kirim perintah *#wiki* _Kata Kunci_\nContoh : **#wiki* _asu_ ', id)
             const query_ = body.slice(6)
             const wiki = await get.get(`https://api.vhtear.com/wikipedia?query=${encodeURIComponent(query_)}&apikey=botnolepbydandyproject`).json()
@@ -459,6 +734,13 @@ module.exports = msgHandler = async (client, message) => {
             client.sendContact(from, '6285892766102@c.us')
             break*/
         case '#ig':
+            if (isLimit(serial)) return client.reply(from, `_Hai ${pushname} Limit request anda sudah mencapai batas, Akan direset kembali setiap jam 9 dan gunakan seperlunya!_`, id)
+            if(isMsgLimit(serial)){
+                    return
+                }else{
+                    await addMsgLimit(serial)
+            }
+            await limitAdd(serial)
             try {
                 if (args.length === 1) return client.reply(from, 'Kirim perintah *#ig [linkIg]* untuk contoh silahkan kirim perintah *#readme*', id)
                 if (!args[1].includes('instagram.com')) return client.reply(from, mess.error.Iv, id)
@@ -473,6 +755,13 @@ module.exports = msgHandler = async (client, message) => {
             break
         case '#family100':
             if (!isGroupMsg) return client.reply(from, 'Bot sekarang hanya bisa digunakan digrup saja! untuk dimasukan ke grup bot ini sifatnya berbayar, konfirmasi ke owner bot wa.me/6289673766582 untuk pertanyaan lebih lanjut', id)
+            if (isLimit(serial)) return client.reply(from, `_Hai ${pushname} Limit request anda sudah mencapai batas, Akan direset kembali setiap jam 9 dan gunakan seperlunya!_`, id)
+            if(isMsgLimit(serial)){
+                    return
+                }else{
+                    await addMsgLimit(serial)
+            }
+            await limitAdd(serial)
             const family = await get.get('https://api.vhtear.com/family100&apikey=botnolepbydandyproject').json()
             client.reply(from, `*FAMILY 100*\n\n*Pertanyaan* : ${family.result.soal}\n\n_Waktu : 30 Detik..._`, id)
             await sleep(10000)
@@ -486,6 +775,13 @@ module.exports = msgHandler = async (client, message) => {
             break
         case '#caklontong':
             if (!isGroupMsg) return client.reply(from, 'Bot sekarang hanya bisa digunakan digrup saja! untuk dimasukan ke grup bot ini sifatnya berbayar, konfirmasi ke owner bot wa.me/6289673766582 untuk pertanyaan lebih lanjut', id)
+            if (isLimit(serial)) return client.reply(from, `_Hai ${pushname} Limit request anda sudah mencapai batas, Akan direset kembali setiap jam 9 dan gunakan seperlunya!_`, id)
+            if(isMsgLimit(serial)){
+                    return
+                }else{
+                    await addMsgLimit(serial)
+            }
+            await limitAdd(serial)
             const cakl = await get.get('https://api.vhtear.com/funkuis&apikey=botnolepbydandyproject').json()
             client.reply(from,`*TTS CAK LONTONG*\n\n*Pertanyaan* : ${cakl.result.soal} \n\n_Waktu : 30 Detik..._`, id)
             await sleep(10000)
@@ -499,6 +795,13 @@ module.exports = msgHandler = async (client, message) => {
             break 
         case '#tebakgambar':
             if (!isGroupMsg) return client.reply(from, 'Bot sekarang hanya bisa digunakan digrup saja! untuk dimasukan ke grup bot ini sifatnya berbayar, konfirmasi ke owner bot wa.me/6289673766582 untuk pertanyaan lebih lanjut', id)            
+            if (isLimit(serial)) return client.reply(from, `_Hai ${pushname} Limit request anda sudah mencapai batas, Akan direset kembali setiap jam 9 dan gunakan seperlunya!_`, id)
+            if(isMsgLimit(serial)){
+                    return
+                }else{
+                    await addMsgLimit(serial)
+            }
+            await limitAdd(serial)
             const teabaks = await get.get('https://api.vhtear.com/tebakgambar&apikey=botnolepbydandyproject').json()                      
             const { soalImg, jawaban } = teabaks.result           
             await client.sendFileFromUrl(from, soalImg, 'soal.jpg',`*TEBAK GAMBAR*\n\n_Waktu : 30 Detik..._`, id) 
@@ -549,6 +852,13 @@ module.exports = msgHandler = async (client, message) => {
             break*/
         case '#igstalk':   
             if (!isGroupMsg) return client.reply(from, 'Bot sekarang hanya bisa digunakan digrup saja! untuk dimasukan ke grup bot ini sifatnya berbayar, konfirmasi ke owner bot wa.me/6289673766582 untuk pertanyaan lebih lanjut', id)
+            if (isLimit(serial)) return client.reply(from, `_Hai ${pushname} Limit request anda sudah mencapai batas, Akan direset kembali setiap jam 9 dan gunakan seperlunya!_`, id)
+            if(isMsgLimit(serial)){
+                    return
+                }else{
+                    await addMsgLimit(serial)
+            }
+            await limitAdd(serial)
             if (args.length === 1)  return client.reply(from, 'Kirim perintah *#igStalk @username*\nContoh *#igStalk @ijmalan*', id)
             client.reply(from, `_Sedang mencari data profil..._`, id)
             const stalk = await get.get(`https://api.vhtear.com/igprofile?query=${args[1]}&apikey=botnolepbydandyproject`).json()
@@ -560,6 +870,13 @@ module.exports = msgHandler = async (client, message) => {
         case '#ytsearch':
         case '#searchyt':
             if (!isGroupMsg) return client.reply(from, 'Bot sekarang hanya bisa digunakan digrup saja! untuk dimasukan ke grup bot ini sifatnya berbayar, konfirmasi ke owner bot wa.me/628967376682 untuk pertanyaan lebih lanjut', id)
+            if (isLimit(serial)) return client.reply(from, `_Hai ${pushname} Limit request anda sudah mencapai batas, Akan direset kembali setiap jam 9 dan gunakan seperlunya!_`, id)
+            if(isMsgLimit(serial)){
+                    return
+                }else{
+                    await addMsgLimit(serial)
+            }
+            await limitAdd(serial)
             if (args.length === 1) return client.reply(from, 'Kirim perintah *#searchyt* _Channel/Title YT yang akan dicari_')
             const keywot = body.slice(10)
             try {
@@ -632,6 +949,13 @@ module.exports = msgHandler = async (client, message) => {
             }
         	break*/ 
         case '#brainly':
+            if (isLimit(serial)) return client.reply(from, `_Hai ${pushname} Limit request anda sudah mencapai batas, Akan direset kembali setiap jam 9 dan gunakan seperlunya!_`, id)
+            if(isMsgLimit(serial)){
+                    return
+                }else{
+                    await addMsgLimit(serial)
+            }
+            await limitAdd(serial)
             if (args.length >= 2){
                 const BrainlySearch = require('./lib/brainly')
                 let tanya = body.slice(9)
@@ -696,6 +1020,13 @@ module.exports = msgHandler = async (client, message) => {
             }
             break*/
         case '#quotemaker':
+            if (isLimit(serial)) return client.reply(from, `_Hai ${pushname} Limit request anda sudah mencapai batas, Akan direset kembali setiap jam 9 dan gunakan seperlunya!_`, id)
+            if(isMsgLimit(serial)){
+                    return
+                }else{
+                    await addMsgLimit(serial)
+            }
+            await limitAdd(serial)
             arg = body.trim().split('.')
             if (arg.length >= 4) {
                 client.reply(from, mess.wait, id)
@@ -869,12 +1200,26 @@ module.exports = msgHandler = async (client, message) => {
             client.sendFile(from, sesPic, 'session.png', 'Neh...', id)
             break
         case '#lirik':
+            if (isLimit(serial)) return client.reply(from, `_Hai ${pushname} Limit request anda sudah mencapai batas, Akan direset kembali setiap jam 9 dan gunakan seperlunya!_`, id)
+            if(isMsgLimit(serial)){
+                    return
+                }else{
+                    await addMsgLimit(serial)
+            }
+            await limitAdd(serial)
             if (args.length == 1) return client.reply(from, 'Kirim perintah *#lirik [optional]*, contoh *#lirik aku bukan boneka*', id)
             const lagu = body.slice(7)
             const lirik = await liriklagu(lagu)
             client.reply(from, lirik, id)
             break
         case '#chord':
+            if (isLimit(serial)) return client.reply(from, `_Hai ${pushname} Limit request anda sudah mencapai batas, Akan direset kembali setiap jam 9 dan gunakan seperlunya!_`, id)
+            if(isMsgLimit(serial)){
+                    return
+                }else{
+                    await addMsgLimit(serial)
+            }
+            await limitAdd(serial)
             if (args.length === 1) return client.reply(from, 'Kirim perintah *#chord [query]*, contoh *#chord aku bukan boneka*', id)
             const query__ = body.slice(7)
             const chord = await get.get('https://api.i-tech.id/tools/chord?key=ZEL5ZL-Wm5Psl-66gG9x-W3FHEa-97bm8g&query='+ query__).json()
@@ -882,20 +1227,42 @@ module.exports = msgHandler = async (client, message) => {
             client.reply(from, chord.result, id)
             break
         case '#artinama':
+            if (isLimit(serial)) return client.reply(from, `_Hai ${pushname} Limit request anda sudah mencapai batas, Akan direset kembali setiap jam 9 dan gunakan seperlunya!_`, id)
+            if(isMsgLimit(serial)){
+                    return
+                }else{
+                    await addMsgLimit(serial)
+            }
+            await limitAdd(serial)
             if (args.length === 1) return client.reply(from, 'Kirim perintah *#artinama [nama]*, contoh *#artinama ijmal*', id)
             const artihah = body.slice(10)
             const arte = await get.get('https://api.vhtear.com/artinama?nama='+artihah+'&apikey=botnolepbydandyproject').json()
             const { hasil } = arte.result
             client.reply(from, hasil, id)
             break
+        case '#cekjodoh':
+            if (isLimit(serial)) return client.reply(from, `_Hai ${pushname} Limit request anda sudah mencapai batas, Akan direset kembali setiap jam 9 dan gunakan seperlunya!_`, id)
+            if(isMsgLimit(serial)){
+                    return
+                }else{
+                    await addMsgLimit(serial)
+            }
+            await limitAdd(serial)
+            if (args.length === 1) return client.reply(from, 'Kirim perintah *#cekjodoh [nama-nama]*, contoh *#cekjodoh ijmal-yal*', id)
+            const cekjo = body.slice(10)
+            const doh = await get.get('https://api.i-tech.id/tools/cekjodoh?key=ZEL5ZL-Wm5Psl-66gG9x-W3FHEa-97bm8g&query='+cekjo).json()
+            client.reply(from, doh.result, id)
+            break            
         /*case '#zodiak':
-            if (args.length === 1) return client.reply(from, 'Kirim perintah *#zodiak _zodiakmu_*, contoh *#zodiak _scorpio_*', id)
-            const zod = body.slice(10)
-            const iak = await get.get('https://api.vhtear.com/zodiak?query='+zod+'&apikey=botnolepbydandyproject').json()
-            const {  ramalan, motivasi, inspirasi } = iak.result
-            const muuuu = `➸ *Zodiak* : ${zod}\n➸ *Ramalan* : ${ramalan}\n➸ *Motivasi* : ${motivasi}\n➸ *Inspirasi* : ${inspirasi}`
-            client.reply(from, muuuu, id)
-            break*/         
+            if (args.length === 1) return client.reply(from, 'Kirim perintah *#zodiak _.nama.tglLahir_*, contoh *#zodiak _.ijmal.01/12/2003_*', id)
+            arg = body.trim().split('.')
+            if (arg.length >= 3) {
+            const namemu = arg[1]
+            const tgllahirmu = arg[2]
+            const iak = await get.get(from, `https://api.i-tech.id/tools/zodiak?key=ZEL5ZL-Wm5Psl-66gG9x-W3FHEa-97bm8g&nama=${namemu}&tgl=${tgllahirmu}`,id)
+            const muuuu = `➸ *Nama* : ${nama.iak.result}\n➸ *Lahir* : ${lahir.iak.result}\n➸ *Usia* : ${usia.iak.result}\n➸ *Ulang Tahun* : ${ultah.iak.result}\n➸ *Zodiakmu* : ${zodiak.iak.result}`
+            client.reply(from, muuuu, id)}
+            break                   
        /* case '!listdaerah':
             const listDaerah = await get('https://mhankbarbar.herokuapp.com/daerah').json()
             client.reply(from, listDaerah, id)
@@ -908,6 +1275,13 @@ module.exports = msgHandler = async (client, message) => {
             client.sendTextWithMentions(from, hih, id)
             break*/
         case '#jadwalshalat':
+            if (isLimit(serial)) return client.reply(from, `_Hai ${pushname} Limit request anda sudah mencapai batas, Akan direset kembali setiap jam 9 dan gunakan seperlunya!_`, id)
+            if(isMsgLimit(serial)){
+                    return
+                }else{
+                    await addMsgLimit(serial)
+            }
+            await limitAdd(serial)
             if (args.length === 1) return client.reply(from, '[❗] Kirim perintah *#jadwalShalat [daerah]*\ncontoh : *#jadwalShalat Tangerang*\nUntuk list daerah kirim perintah *!listDaerah*')
             const daerah = body.slice(14)
             const jadwalShalat = await get.get(`https://mhankbarbar.herokuapp.com/api/jadwalshalat?daerah=${daerah}&apiKey=IsDssiTLL9hE7ofCV1Ot`).json()
@@ -924,16 +1298,30 @@ module.exports = msgHandler = async (client, message) => {
             client.reply(from, listChannel, id)
             break
         case '#jadwaltv':
+            if (isLimit(serial)) return client.reply(from, `_Hai ${pushname} Limit request anda sudah mencapai batas, Akan direset kembali setiap jam 9 dan gunakan seperlunya!_`, id)
+            if(isMsgLimit(serial)){
+                    return
+                }else{
+                    await addMsgLimit(serial)
+            }
+            await limitAdd(serial)
             if (args.length === 1) return client.reply(from, 'Kirim perintah *#jadwalTv [channel]*', id)
             const query = body.slice(10).toLowerCase()
             const jadwal = await jadwalTv(query)
             client.reply(from, jadwal, id)
             break
         case '#jadwaltvnow':
+            if (isLimit(serial)) return client.reply(from, `_Hai ${pushname} Limit request anda sudah mencapai batas, Akan direset kembali setiap jam 9 dan gunakan seperlunya!_`, id)
+            if(isMsgLimit(serial)){
+                    return
+                }else{
+                    await addMsgLimit(serial)
+            }
+            await limitAdd(serial)
             const jadwalNow = await get.get('https://api.haipbis.xyz/jadwaltvnow').json()
             client.reply(from, `Jam : ${jadwalNow.jam}\n\nJadwalTV : ${jadwalNow.jadwalTV}`, id)
             break
-        case '#sendowner':
+        //case '#sendowner':
             client.sendContact(from, '6289673766582@c.us' ,isLordzOwner)
             break            
         /*case '!loli':
@@ -1049,6 +1437,13 @@ module.exports = msgHandler = async (client, message) => {
             }
             break 
         case '#mememaker':
+                if (isLimit(serial)) return client.reply(from, `_Hai ${pushname} Limit request anda sudah mencapai batas, Akan direset kembali setiap jam 9 dan gunakan seperlunya!_`, id)
+            if(isMsgLimit(serial)){
+                    return
+                }else{
+                    await addMsgLimit(serial)
+            }
+            await limitAdd(serial)
                 arg = body.trim().split('.')
                 if (arg.length >= 4) {
                 const temanya = arg[1]
@@ -1062,14 +1457,35 @@ module.exports = msgHandler = async (client, message) => {
             break    
         case '#quote':
         case '#quotes':
+            if (isLimit(serial)) return client.reply(from, `_Hai ${pushname} Limit request anda sudah mencapai batas, Akan direset kembali setiap jam 9 dan gunakan seperlunya!_`, id)
+            if(isMsgLimit(serial)){
+                    return
+                }else{
+                    await addMsgLimit(serial)
+            }
+            await limitAdd(serial)
             const quotes = await get.get('https://mhankbarbar.herokuapp.com/api/randomquotes').json()
             client.reply(from, `➸ *Quotes* : ${quotes.quotes}\n➸ *Author* : ${quotes.author}`, id)
             break
         case '#quotesnime':
+            if (isLimit(serial)) return client.reply(from, `_Hai ${pushname} Limit request anda sudah mencapai batas, Akan direset kembali setiap jam 9 dan gunakan seperlunya!_`, id)
+            if(isMsgLimit(serial)){
+                    return
+                }else{
+                    await addMsgLimit(serial)
+            }
+            await limitAdd(serial)
             const skya = await get.get('https://api.haipbis.xyz/randomanimequotes').json()
             client.reply(from, `➸ *Quotes* : ${skya.quotes}\n➸ *Author* : ${skya.author}\n➸ *Anime* : ${skya.anime}`, id)
             break
         case '#meme':
+            if (isLimit(serial)) return client.reply(from, `_Hai ${pushname} Limit request anda sudah mencapai batas, Akan direset kembali setiap jam 9 dan gunakan seperlunya!_`, id)
+            if(isMsgLimit(serial)){
+                    return
+                }else{
+                    await addMsgLimit(serial)
+            }
+            await limitAdd(serial)
             const response = await axios.get('https://meme-api.herokuapp.com/gimme/wholesomeanimemes');
             const { postlink, title, subreddit, url, nsfw, spoiler } = response.data
             client.sendFileFromUrl(from, `${url}`, 'meme.jpg', `${title}`)
@@ -1082,23 +1498,38 @@ module.exports = msgHandler = async (client, message) => {
             break                              
         case 'P' :    
         case '#help':
+            if (isLimit(serial)) return client.reply(from, `_Hai ${pushname} Limit request anda sudah mencapai batas, Akan direset kembali setiap jam 9 dan gunakan seperlunya!_`, id)
+            if(isMsgLimit(serial)){
+                    return
+                }else{
+                    await addMsgLimit(serial)
+            }
+            await limitAdd(serial)
             client.sendText(from, help)
             break
         case '#readme':
             client.reply(from, readme, id)
             break
         case '#menu':
+            if (isLimit(serial)) return client.reply(from, `_Hai ${pushname} Limit request anda sudah mencapai batas, Akan direset kembali setiap jam 9 dan gunakan seperlunya!_`, id)
+            if(isMsgLimit(serial)){
+                    return
+                }else{
+                    await addMsgLimit(serial)
+            }
+            await limitAdd(serial)
             client.sendText(from, help)
             break    
         case '#info':
             client.sendLinkWithAutoPreview(from, 'https://github.com/ijmalan/lordz-bot', info)
+            client.sendContact(from, '6289673766582@c.us' ,isLordzOwner)
             break
         case '#snk':
             client.reply(from, snk, id)
             break
          default:
             if (command.startsWith('#')) {
-                client.reply(from, `Hai ${pushname} sayangnya.. bot tidak mengerti perintah ${args[0]}, mohon ketik *#menu*`, id)
+                client.reply(from, `Hai ${pushname} sayangnya.. bot tidak mengerti perintah ${args[0]}, mohon ketik *#menu*\n\nDan ketik *#limit* untuk cek sisa limit request anda`, id)
             }    
         }
     } catch (err) {
